@@ -17,7 +17,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/spark/node-mbed-dtls.git"
+    "url": "git+https://github.com/particle-iot/node-mbed-dtls.git"
   },
   "devDependencies": {
     "mocha": "^2.3.3",
