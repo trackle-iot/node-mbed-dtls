@@ -155,7 +155,7 @@ class DtlsServer extends EventEmitter {
 	_onMessage(msg, rinfo, cb) {
 		const key = `${rinfo.address}:${rinfo.port}`;
 
-		this._debug(`node-mbed-dtls#receive: ${msg.length}:"${msg}"`);
+		this._debug(`node-mbed-dtls#receive: key=${key} len=${msg.length} msg=${msg.toString('hex')}`);
 
 		// special IP changed content type
 		if (msg.length > 0 && msg[0] === IP_CHANGE_CONTENT_TYPE) {

@@ -98,7 +98,7 @@ class DtlsSocket extends stream.Duplex {
 		}
 
 		this.emit('send', msg.length);
-		this.server._debug(`node-mbed-dtls#send: ${msg.length}:'${msg}'`);
+		this.server._debug(`node-mbed-dtls#send: key=${this.remoteAddress}:${this.remotePort} len=${msg.length} msg=${msg.toString('hex')}`);
 		this.dgramSocket.send(msg, 0, msg.length, this.remotePort, this.remoteAddress, sendFinished);
 	}
 
