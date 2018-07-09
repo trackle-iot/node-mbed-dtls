@@ -1,6 +1,7 @@
 'use strict';
 
 var DtlsServer = require('./server');
+var EcjPake = require('./build/Release/node_mbed_dtls').EcjPake;
 
 function createServer(options, secureConnectionListener) {
 	options = options || {};
@@ -13,4 +14,4 @@ function createServer(options, secureConnectionListener) {
 	return server;
 }
 
-module.exports = { createServer };
+module.exports = { createServer, EcjPake };

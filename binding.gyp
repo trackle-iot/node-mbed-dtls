@@ -19,7 +19,7 @@
         "config"
       ],
       "defines": [
-        "MBEDTLS_CONFIG_FILE=\"config-ecc-ccm-rpk-dtls1_2.h\""
+        "MBEDTLS_CONFIG_FILE=\"mbedtls_config.h\""
       ]
     },
     {
@@ -41,7 +41,7 @@
         "config"
       ],
       "defines": [
-        "MBEDTLS_CONFIG_FILE=\"config-ecc-ccm-rpk-dtls1_2.h\""
+        "MBEDTLS_CONFIG_FILE=\"mbedtls_config.h\""
       ]
     },
     {
@@ -105,16 +105,34 @@
         "config"
       ],
       "defines": [
-        "MBEDTLS_CONFIG_FILE=\"config-ecc-ccm-rpk-dtls1_2.h\""
+        "MBEDTLS_CONFIG_FILE=\"mbedtls_config.h\""
+      ]
+    },
+    {
+      "target_name": "mbedjpake",
+      "type": "static_library",
+      "sources": [
+        "mbedtls/library/ecjpake.c"
+      ],
+      "include_dirs": [
+        "mbedtls/include",
+        "config"
+      ],
+      "defines": [
+        "MBEDTLS_CONFIG_FILE=\"mbedtls_config.h\""
       ]
     },
     {
       "target_name": "node_mbed_dtls",
       "sources": [
         "src/init.cc",
+        "src/Util.cc",
+        "src/MbedTlsError.cc",
+        "src/Drbg.cc",
         "src/DtlsServer.cc",
         "src/DtlsSocket.cc",
-        "src/SessionWrap.cc"
+        "src/SessionWrap.cc",
+        "src/EcjPake.cc"
       ],
       "include_dirs": [
         "<!(node -e \"require('nan')\")",
@@ -124,11 +142,24 @@
       "dependencies": [
         "mbedtls",
         "mbedx509",
-        "mbedcrypto"
+        "mbedcrypto",
+        "mbedjpake"
       ],
+      'cflags_cc': [ '-std=c++11' ],
+      # Make sure exceptions and RTTI are enabled
+      'cflags_cc!': [ '-fno-exceptions', '-fno-rtti' ],
+      # MacOS requires some special treatment
+      'xcode_settings': {
+        'GCC_ENABLE_CPP_EXCEPTIONS': 'YES',
+        'GCC_ENABLE_CPP_RTTI': 'YES',
+        'OTHER_CFLAGS': [
+          '-std=c++11',
+          '-stdlib=libc++'
+        ]
+      },
       "defines": [
-        "MBEDTLS_CONFIG_FILE=\"config-ecc-ccm-rpk-dtls1_2.h\""
+        "MBEDTLS_CONFIG_FILE=\"mbedtls_config.h\""
       ]
-    }
+    },
   ]
 }
