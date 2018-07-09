@@ -9,6 +9,8 @@
 
 class EcjPakeImpl {
 public:
+    static const size_t MAX_BUFFER_SIZE = MBEDTLS_SSL_MAX_CONTENT_LEN;
+
     EcjPakeImpl(mbedtls_ecjpake_role role, mbedtls_md_type_t hash, mbedtls_ecp_group_id curve, const char* secret,
             size_t secretSize);
     ~EcjPakeImpl();
@@ -20,7 +22,8 @@ public:
     void writeRoundTwo(char* buf, size_t* bufSize);
 
     void deriveSecret(char* buf, size_t* bufSize);
-    
+    size_t secretSize() const;
+
 private:
     mbedtls_ecjpake_context ctx_;
 };

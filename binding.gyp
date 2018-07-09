@@ -98,20 +98,7 @@
         "mbedtls/library/timing.c",
         "mbedtls/library/version.c",
         "mbedtls/library/version_features.c",
-        "mbedtls/library/xtea.c"
-      ],
-      "include_dirs": [
-        "mbedtls/include",
-        "config"
-      ],
-      "defines": [
-        "MBEDTLS_CONFIG_FILE=\"mbedtls_config.h\""
-      ]
-    },
-    {
-      "target_name": "mbedjpake",
-      "type": "static_library",
-      "sources": [
+        "mbedtls/library/xtea.c",
         "mbedtls/library/ecjpake.c"
       ],
       "include_dirs": [
@@ -132,7 +119,8 @@
         "src/DtlsServer.cc",
         "src/DtlsSocket.cc",
         "src/SessionWrap.cc",
-        "src/EcjPake.cc"
+        "src/EcjPake.cc",
+        "src/AesCcm.cc"
       ],
       "include_dirs": [
         "<!(node -e \"require('nan')\")",
@@ -142,8 +130,7 @@
       "dependencies": [
         "mbedtls",
         "mbedx509",
-        "mbedcrypto",
-        "mbedjpake"
+        "mbedcrypto"
       ],
       'cflags_cc': [ '-std=c++11' ],
       # Make sure exceptions and RTTI are enabled

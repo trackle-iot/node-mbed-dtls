@@ -11,8 +11,6 @@ using namespace node;
 const auto DEFAULT_CURVE_TYPE = MBEDTLS_ECP_DP_SECP256R1;
 const auto DEFAULT_HASH_TYPE = MBEDTLS_MD_SHA256;
 
-const size_t MAX_BUFFER_SIZE = MBEDTLS_SSL_MAX_CONTENT_LEN; // FIXME: Use smaller temporary buffers
-
 Nan::Persistent<v8::Function> g_ecjPakeCtor;
 
 mbedtls_ecjpake_role roleTypeFromString(const std::string& str) {
@@ -97,6 +95,10 @@ void EcjPakeImpl::deriveSecret(char* buf, size_t* bufSize) {
     *bufSize = n;
 }
 
+size_t EcjPakeImpl::secretSize() const {
+    return mbedtls_md_get_size(ctx_.md_info);
+}
+
 void EcjPake::Initialize(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE target) {
     Nan::HandleScope scope;
     v8::Local<v8::FunctionTemplate> ctor = Nan::New<v8::FunctionTemplate>(EcjPake::New);
@@ -172,8 +174,8 @@ void EcjPake::ReadRoundOne(const Nan::FunctionCallbackInfo<v8::Value>& info) {
 void EcjPake::WriteRoundOne(const Nan::FunctionCallbackInfo<v8::Value>& info) {
     try {
         const auto that = Nan::ObjectWrap::Unwrap<EcjPake>(info.This());
-        std::unique_ptr<char[]> buf(new char[MAX_BUFFER_SIZE]);
-        size_t n = MAX_BUFFER_SIZE;
+        size_t n = EcjPakeImpl::MAX_BUFFER_SIZE;
+        std::unique_ptr<char[]> buf(new char[n]);
         that->p_->writeRoundOne(buf.get(), &n);
         auto bufVal = Nan::CopyBuffer(buf.get(), n);
         info.GetReturnValue().Set(bufVal.ToLocalChecked());
@@ -196,8 +198,8 @@ void EcjPake::ReadRoundTwo(const Nan::FunctionCallbackInfo<v8::Value>& info) {
 void EcjPake::WriteRoundTwo(const Nan::FunctionCallbackInfo<v8::Value>& info) {
     try {
         const auto that = Nan::ObjectWrap::Unwrap<EcjPake>(info.This());
-        std::unique_ptr<char[]> buf(new char[MAX_BUFFER_SIZE]);
-        size_t n = MAX_BUFFER_SIZE;
+        size_t n = EcjPakeImpl::MAX_BUFFER_SIZE;
+        std::unique_ptr<char[]> buf(new char[n]);
         that->p_->writeRoundTwo(buf.get(), &n);
         auto bufVal = Nan::CopyBuffer(buf.get(), n);
         info.GetReturnValue().Set(bufVal.ToLocalChecked());
@@ -209,8 +211,8 @@ void EcjPake::WriteRoundTwo(const Nan::FunctionCallbackInfo<v8::Value>& info) {
 void EcjPake::DeriveSecret(const Nan::FunctionCallbackInfo<v8::Value>& info) {
     try {
         const auto that = Nan::ObjectWrap::Unwrap<EcjPake>(info.This());
-        std::unique_ptr<char[]> buf(new char[MAX_BUFFER_SIZE]);
-        size_t n = MAX_BUFFER_SIZE;
+        size_t n = that->p_->secretSize();
+        std::unique_ptr<char[]> buf(new char[n]);
         that->p_->deriveSecret(buf.get(), &n);
         auto bufVal = Nan::CopyBuffer(buf.get(), n);
         info.GetReturnValue().Set(bufVal.ToLocalChecked());
