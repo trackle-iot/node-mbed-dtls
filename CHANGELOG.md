@@ -1,3 +1,7 @@
+# 2.4.8 - 23 Jan 2019
+
+* updating to use newer particle mbedtls fork - particle-mbedtls-2.4.2
+
 # 2.4.7 - 20 Nov 2017
 
 * increased the maximum DTLS packet size from 768 to 800 bytes
