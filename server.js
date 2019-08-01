@@ -129,7 +129,7 @@ class DtlsServer extends EventEmitter {
 				this._debug(`Device in 'move session' lock state attempting to force it to re-handshake deviceID=${deviceId}`);
 
 				//Always EMIT this event instead of calling _forceDeviceRehandshake internally this allows the DS to device wether to send the packet or not to the device
-				this.emit('forceDeviceRehandshake', rinfo, deviceId); 
+				this.emit('forceDeviceRehandshake', rinfo, deviceId);
 			}
 		});
 		return lookedUp;
@@ -148,7 +148,7 @@ class DtlsServer extends EventEmitter {
 			0x00,                                 // HandshakeType hello_request
 			0x00                                  // Handshake body, intentionally too short at a single byte
 		]);
-		
+
 		// Sending the malformed hello request back over the raw UDP socket
 		this.dgramSocket.send(malformedHelloRequest, rinfo.port, rinfo.address);
 	}
