@@ -1,19 +1,21 @@
 {
   "name": "node-mbed-dtls",
-  "version": "2.6.1",
+  "version": "3.0.0-beta.0",
   "description": "Node mbed DTLS",
   "main": "index.js",
   "scripts": {
-    "test": "mocha test/server.js",
+    "build": "node-gyp rebuild -j 8",
+    "debug": "node-gyp rebuild -j 8 --debug",
+    "clean": "node-gyp clean",
     "install": "node-gyp rebuild",
-    "build": "node-gyp build",
-    "start": "node index.js"
+    "test": "mocha **/*.test.js"
   },
   "author": "Bryce Kahle",
   "license": "Apache-2.0",
   "gypfile": true,
   "dependencies": {
-    "nan": "^2.0.9"
+    "bindings": "^1.5.0",
+    "node-addon-api": "^1.6.3"
   },
   "repository": {
     "type": "git",

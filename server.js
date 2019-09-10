@@ -5,7 +5,7 @@ var fs = require('fs');
 var EventEmitter = require('events').EventEmitter;
 
 var DtlsSocket = require('./socket');
-var mbed = require('./build/Release/node_mbed_dtls');
+var mbed = require('bindings')('node_mbed_dtls.node');
 
 const APPLICATION_DATA_CONTENT_TYPE = 23;
 const IP_CHANGE_CONTENT_TYPE = 254;
@@ -39,7 +39,7 @@ class DtlsServer extends EventEmitter {
 		// likely a PEM encoded key, add null terminating byte
 		// 0x2d = '-'
 		if (key[0] === 0x2d && key[key.length - 1] !== 0) {
-			key = Buffer.concat([key, new Buffer([0])]);
+			key = Buffer.concat([key, Buffer.from([0])]);
 		}
 
 		this.mbedServer = new mbed.DtlsServer(key, options.debug);
@@ -57,7 +57,7 @@ class DtlsServer extends EventEmitter {
 			this.once('close', callback);
 		}
 		this._closing = true;
-		this._endSockets();
+		this._closeSocket();
 	}
 
 	address() {
@@ -129,7 +129,7 @@ class DtlsServer extends EventEmitter {
 				this._debug(`Device in 'move session' lock state attempting to force it to re-handshake deviceID=${deviceId}`);
 
 				//Always EMIT this event instead of calling _forceDeviceRehandshake internally this allows the DS to device wether to send the packet or not to the device
-				this.emit('forceDeviceRehandshake', rinfo, deviceId); 
+				this.emit('forceDeviceRehandshake', rinfo, deviceId);
 			}
 		});
 		return lookedUp;
@@ -137,9 +137,9 @@ class DtlsServer extends EventEmitter {
 
 	_forceDeviceRehandshake(rinfo, deviceId){
 		this._debug(`Attemting force re-handshake by sending malformed hello request packet to deviceID=${deviceId}`);
-		
+
 		// Construct the 'session killing' Avada Kedavra packet
-		const malformedHelloRequest = new Buffer([
+		const malformedHelloRequest = Buffer.from([
 			0x16,                                 // Handshake message type 22
 			0xfe, 0xfd,                           // DTLS 1.2
 			0x00, 0x01,                           // Epoch
@@ -148,7 +148,7 @@ class DtlsServer extends EventEmitter {
 			0x00,                                 // HandshakeType hello_request
 			0x00                                  // Handshake body, intentionally too short at a single byte
 		]);
-		
+
 		// Sending the malformed hello request back over the raw UDP socket
 		this.dgramSocket.send(malformedHelloRequest, rinfo.port, rinfo.address);
 	}
@@ -271,10 +271,6 @@ class DtlsServer extends EventEmitter {
 				s.end();
 			}
 		});
-
-		if (sockets.length === 0) {
-			this._closeSocket();
-		}
 	}
 
 	_socketClosed() {

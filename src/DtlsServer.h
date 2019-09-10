@@ -1,8 +1,7 @@
 #ifndef __DTLS_SERVER_H__
 #define __DTLS_SERVER_H__
 
-#include <node.h>
-#include <nan.h>
+#include <napi.h>
 
 #include "mbedtls/entropy.h"
 #include "mbedtls/ctr_drbg.h"
@@ -17,21 +16,24 @@
 #include "mbedtls/ssl_cache.h"
 #endif
 
-class DtlsServer : public Nan::ObjectWrap {
+#define CHECK_MBEDTLS(_expr) \
+	do { \
+		const int _r = _expr; \
+		if (_r != 0) { \
+			throwMbedTlsError(env, _r); \
+		} \
+	} while (false)
+
+void throwMbedTlsError(Napi::Env& env, int error);
+
+class DtlsServer : public Napi::ObjectWrap<DtlsServer> {
 public:
-	static Nan::Persistent<v8::FunctionTemplate> constructor;
-	static void Initialize(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE target);
-	static void New(const Nan::FunctionCallbackInfo<v8::Value>& info);
-	static NAN_SETTER(SetHandshakeTimeoutMin);
-	DtlsServer(const unsigned char *srv_key,
-						 size_t srv_key_len,
-						 int debug_level = 0);
+	static Napi::Object Initialize(Napi::Env env, Napi::Object exports);
 	inline mbedtls_ssl_config* config() { return &conf; }
-
-private:
-	void throwError(int ret);
+	DtlsServer(const Napi::CallbackInfo& info);
 	~DtlsServer();
-
+private:
+	static Napi::FunctionReference constructor;
 	mbedtls_ssl_cookie_ctx cookie_ctx;
 	mbedtls_entropy_context entropy;
 	mbedtls_ctr_drbg_context ctr_drbg;
@@ -41,7 +43,8 @@ private:
 #if defined(MBEDTLS_SSL_CACHE_C)
 	mbedtls_ssl_cache_context cache;
 #endif
-
+	void SetHandshakeTimeoutMin(const Napi::CallbackInfo& info, const Napi::Value& value);
+	Napi::Value GetHandshakeTimeoutMin(const Napi::CallbackInfo& info);
 };
 
 #endif
