@@ -72,8 +72,8 @@ class DtlsSocket extends stream.Duplex {
 	/**
 	 * Resume the mbedtls session state for this connection.
 	 * If the session is successfully resumed, the socket is considered connected (handshake complete) and resumed.
-	 * @param session
-	 * @returns {boolean}
+	 * @param {object} session  The session to resume in the mbedtls layer.
+	 * @returns {boolean} true if the session was successfully resumed in the mbedtls layer
 	 */
 	resumeSession(session) {
 		if (!session || !this.mbedSocket) {
@@ -95,6 +95,7 @@ class DtlsSocket extends stream.Duplex {
 	 * Read data from the underlying stream. This presently does nothing since the data is delivered via the
 	 * {@link #receive} function. The stream only operates in flowing mode.
 	 * @private
+	 * @override
 	 */
 	_read() {
 		// TODO implement way to stop/start reading?
@@ -104,10 +105,7 @@ class DtlsSocket extends stream.Duplex {
 	/**
 	 * Override the stream.Duplex `_write` method to write data to the stream.
 	 * This encodes the data via mbedSocket.send() method.
-	 * @param chunk
-	 * @param encoding
-	 * @param callback
-	 * @returns {*}
+	 * @override
 	 * @private
 	 */
 	_write(chunk, encoding, callback) {
@@ -123,6 +121,7 @@ class DtlsSocket extends stream.Duplex {
 	 * Callback from the mbedtls library to send data to the network. This happens either intrinsically or in
 	 * response to sending application data via the `write` method.
 	 * @param {Buffer|Array} msg    The packet to send
+	 * @returns {void}
 	 * @private
 	 */
 	_sendEncrypted(msg) {
@@ -216,7 +215,7 @@ class DtlsSocket extends stream.Duplex {
 	 * Publishes the `receive` event with the incoming message length.
 	 * The decoded data (if any) is pushed to the Duplex stream's read buffer.
 	 * @param {Buffer|Array} msg The incoming message to decrypt
-	 * @returns {boolean}
+	 * @returns {boolean} true when application data was successfully decoded
 	 */
 	receive(msg) {
 		if (!this.mbedSocket) {
@@ -235,6 +234,9 @@ class DtlsSocket extends stream.Duplex {
 		return false;
 	}
 
+	/**
+	 * @override
+	 */
 	end() {
 		if (this._resetting) {
 			return;
@@ -243,6 +245,9 @@ class DtlsSocket extends stream.Duplex {
 		this._end();
 	}
 
+	/**
+	 * @override
+	 */
 	reset() {
 		this._resetting = true;
 		this.emit('close', false);
@@ -254,6 +259,7 @@ class DtlsSocket extends stream.Duplex {
 
 	/**
 	 * Tear down this connection.
+	 * @returns {void}
 	 * @private
 	 */
 	_end() {
@@ -278,7 +284,7 @@ class DtlsSocket extends stream.Duplex {
 
 	/**
 	 * Clean up this connection and emit the close event.
-	 *
+	 * @returns {void}
 	 * @private
 	 */
 	_finishEnd() {

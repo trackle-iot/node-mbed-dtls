@@ -22,8 +22,8 @@ const IP_CHANGE_CONTENT_TYPE = 254;
 class DtlsServer extends EventEmitter {
 	/**
 	 *
-	 * @param {object} options
-	 * @property sendClose - set to false when session resumption is required.
+	 * @param {object} options  Options for this server instance
+	 * @param {boolean} options.sendClose - set to false when session resumption is required.
 	 *  todo - exactly why is it necessary to suppress the close event? Possibly so that when a server shuts down it can
 	 *  close each client connection without
 	 */
@@ -81,9 +81,10 @@ class DtlsServer extends EventEmitter {
 
 	/**
 	 * Begin listening on the specified port and interface.
-	 * @param {Number} port
-	 * @param {String} hostname
-	 * @param callback
+	 * @param {Number} port     The local port to bind to
+	 * @param {string} hostname The local IP or nostname to bind to
+	 * @param {callback} callback function to call
+	 * @returns {void}
 	 */
 	listen(port, hostname, callback) {
 		this.dgramSocket.bind(port, hostname, callback);
@@ -91,7 +92,8 @@ class DtlsServer extends EventEmitter {
 
 	/**
 	 * Close this server socket and all clients.
-	 * @param callback  That is invoked once the socket is closed.
+	 * @param {function} [callback]  function invoked once the socket is closed.
+	 * @returns {void}
 	 */
 	close(callback) {
 		if (callback) {
@@ -114,8 +116,9 @@ class DtlsServer extends EventEmitter {
 
 	/**
 	 * Reinstates and resumes the session on a client socket based on the source address and session.
-	 * @param rinfo
-	 * @param session
+	 * @param {object} rinfo    Source info of the socket to resume
+	 * @param {object} session  The session object to resume.
+	 * todo - we need a jsdoc describing Session
 	 * @returns {boolean} false if there was already an existing client matching the same source
 	 */
 	resumeSocket(rinfo, session) {
@@ -176,8 +179,7 @@ class DtlsServer extends EventEmitter {
 						if (rinfo.address === oldRinfo.address &&
 							rinfo.port === oldRinfo.port) {
 							this._debug(`ignoring ip change because address did not change ip=${key}, deviceID=${deviceId}`);
-						}
-						else {
+						} else {
 							this._debug(`message successfully received, changing ip address fromip=${oldKey}, toip=${key}, deviceID=${deviceId}`);
 							// change IP
 							client.remoteAddress = rinfo.address;
@@ -237,11 +239,11 @@ class DtlsServer extends EventEmitter {
 	 * is invoked to attempt to fetch the corresponding session for the source. If the session was successfully applied
 	 * to the mbedtls layer, the message is then attempted to be decoded. Only when this is successful is the "secureConnection"
 	 * event emitted.
-	 * @param client
-	 * @param msg
-	 * @param key
-	 * @param cb
-	 * @returns {boolean}
+	 * @param {DtlsClient} client   The client socket to resume a session into
+	 * @param {Uint8Array|Buffer} msg A message that was received by the client
+	 * @param {string} key  The identifier of the client
+	 * @param {DtlsServer~receiveCallback} cb   Function that receives the result of the resumption.
+	 * @returns {boolean}   true if session resumption was attempted
 	 * @private
 	 */
 	_attemptResume(client, msg, key, cb) {
@@ -270,6 +272,7 @@ class DtlsServer extends EventEmitter {
 			client.receive(msg);
 			lcb(null, false);
 		});
+		// todo - the callback may not be called if no listeners are registered
 
 		// if somebody was listening, session will attempt to be resumed
 		// do not process with receive until resume finishes
@@ -280,6 +283,7 @@ class DtlsServer extends EventEmitter {
 	 * Handle a packet from the socket.
 	 * @param {Uint8Array|Buffer} msg       The message data
 	 * @param {object} rinfo     The source address info
+	 * @returns {void}
 	 * @private
 	 */
 	_onMessage(msg, rinfo) {
@@ -317,7 +321,7 @@ class DtlsServer extends EventEmitter {
 
 	/**
 	 * Determines if a packet is a move session packet, and if it is, unpacks it.
-	 * @param {(Uint8Array|Buffer)} msg
+	 * @param {(Uint8Array|Buffer)} msg The message to attempt to unpack
 	 * @returns {{msg: (Uint8Array|Buffer), deviceId: string}} result The unpacked message and the deviceId
 	 * @private
 	 */
@@ -346,8 +350,8 @@ class DtlsServer extends EventEmitter {
 	 * @param {(Buffer|Uint8Array)} msg   The packet to decode
 	 * @param {String} key      The key of the client that sent the packet
 	 * @param {Object} rinfo    The source of the packet
-	 * @param {DtlsServer~receiveCallback} [cb]
-	 *
+	 * @param {DtlsServer~receiveCallback} [cb] function invoked with the result of the message decoding
+	 * @returns {void}
 	 * @private
 	 */
 	_receiveMessage(msg, key, rinfo, cb) {
@@ -385,7 +389,7 @@ class DtlsServer extends EventEmitter {
 	 * @param {boolean} selfRestored Set to `true` to indicate the socket was created by the server from a previously stored
 	 *  session. `false` when the socket is created as a result of a client connecting.
 	 *  Available as the `selfRestored` property on the returned object.
-	 * @returns {DtlsSocket}
+	 * @returns {DtlsSocket} the newly created socket
 	 * @private
 	 */
 	_createSocket(rinfo, key, selfRestored) {
@@ -398,8 +402,9 @@ class DtlsServer extends EventEmitter {
 
 	/**
 	 * Attaches the necessary event listeners to the given DtlsSocket.
-	 * @param {DtlsSocket} client
-	 * @param key The key used to uniquely identify this client.
+	 * @param {DtlsSocket} client   The socket to attach the listeners to
+	 * @param {string} key The identifier of the client
+	 * @returns {void}
 	 * @private
 	 */
 	_attachToSocket(client, key) {
@@ -437,6 +442,7 @@ class DtlsServer extends EventEmitter {
 
 	/**
 	 * Calls DtlsClient.end() on all client sockets.
+	 * @returns {void}
 	 * @private
 	 */
 	_endSockets() {
@@ -456,6 +462,7 @@ class DtlsServer extends EventEmitter {
 	 * Handler for the closed event from the underlying network socket.
 	 * This method cleans up socket listeners, closes all client sockets and emits the "close" event and then
 	 * removes all listeners from this socket.
+	 * @returns {void}
 	 * @private
 	 */
 	_socketClosed() {
