@@ -47,7 +47,12 @@ class DtlsServer extends EventEmitter {
 		this._onMessage = this._onMessage.bind(this);
 		this.listening = false;
 		this._closing = false;
-
+		/**
+		 * The number of MoveSession packets received consecutively.
+		 * @type {number}
+		 * @private
+		 */
+		this._moveSessionCount = 0;
 		this.dgramSocket.on('message', this._onMessage);
 		this.dgramSocket.once('listening', () => {
 			this.listening = true;
@@ -141,33 +146,57 @@ class DtlsServer extends EventEmitter {
 		return `${rinfo.address}:${rinfo.port}`;
 	}
 
+	/**
+	 * Handles the message extracted from a MoveSession request.
+	 * The deviceId is used to look up the last known source of the device, and from that the session is retrieved.
+	 * An attempt is made to decode the message using the session retrieved. If it is successful then the deviceId
+	 * was previously associated with that session and the session relocated to the new source address.
+	 *
+	 * The first moveSession packet to be received in a run of moveSession packets causes the sessionResumed event to be fired.
+	 *
+	 * @param {Uint8Array|Buffer} msg The application dtls message (encrypted)
+	 * @param {string} key  A key for the client the message came from
+	 * @param {object} rinfo The network source of the message
+	 * @param {string} deviceId The deviceId that claims to have made the request
+	 * @returns {boolean} true if the lookupKey event had listeners. This says nothing about whether the packet was
+	 *  successfully decoded or not.
+	 * @private
+	 *
+	 * @see _receiveMessage
+	 */
 	_handleIpChange(msg, key, rinfo, deviceId) {
-		// this would be better named fetchSourceInfo and not exposed as an event but as a callback
+		// this would be better named fetchSourceInfo and not exposed as an event but as a callback.
 		const lookedUp = this.emit('lookupKey', deviceId, (err, oldRinfo) => {
 			if (!err && oldRinfo) {
-				// if the IP hasn't actually changed, handle normally
-				if (rinfo.address === oldRinfo.address &&
-						rinfo.port === oldRinfo.port) {
-					this._debug(`ignoring ip change because address did not change ip=${key}, deviceID=${deviceId}`);
-					this._onMessage(msg, rinfo);
-					return;
-				}
-
-				this._onMessage(msg, oldRinfo, (client, received) => {
-					const oldKey = `${oldRinfo.address}:${oldRinfo.port}`;
-					// if the message went through OK
+				// Handle the message using the previous source details
+				const oldKey = this._makeKey(oldRinfo);
+				this._receiveMessage(msg, oldKey, oldRinfo, (client, received) => {
+					// if the message went through OK. (The stream is corked, so the data hasn't been delivered yet.)
 					if (received) {
+						if (rinfo.address === oldRinfo.address &&
+							rinfo.port === oldRinfo.port) {
+							this._debug(`ignoring ip change because address did not change ip=${key}, deviceID=${deviceId}`);
+						}
+						else {
 							this._debug(`message successfully received, changing ip address fromip=${oldKey}, toip=${key}, deviceID=${deviceId}`);
 							// change IP
 							client.remoteAddress = rinfo.address;
 							client.remotePort = rinfo.port;
-						// move in lookup table
-						this.sockets[key] = client;
+							// move in lookup table - todo the _attachClient function should also be updated or the callbacks will remove the wrong socket when
+							// the socket close event is called?
 							delete this.sockets[oldKey];
+							this.sockets[key] = client;
+
 							// tell the world
 							client.emit('ipChanged', oldRinfo);
+						}
+						if (!this._moveSessionCount) {
+							client.emit('sessionResumed');
+						}
+						this._moveSessionCount++;
 					} else {
-						//Do we need to jump out of lock state here too .. TBC (adding logging)?
+						// the session does not match the given device ID
+						// Do we need to jump out of lock state here too .. TBC (adding logging)?
 						this._debug(`message NOT successfully received NOT changing ip address fromip=${oldKey}, toip=${key}, deviceID=${deviceId}`);
 					}
 				});
@@ -249,15 +278,50 @@ class DtlsServer extends EventEmitter {
 
 	/**
 	 * Handle a packet from the socket.
-	 * @param msg       The message data
-	 * @param rinfo     The source address info
-	 * @param [cb]      Optional callback. If provided, events on the associated client are suppressed until the callback returns.
+	 * @param {Uint8Array|Buffer} msg       The message data
+	 * @param {object} rinfo     The source address info
 	 * @private
 	 */
-	_onMessage(msg, rinfo, cb) {
+	_onMessage(msg, rinfo) {
 		const key = this._makeKey(rinfo);
 
+		if (!this._handleMoveSession(msg, key, rinfo)) {
+			this._receiveMessage(msg, key, rinfo);
+		}
+	}
+
+	/**
+	 * Determines if the received packet is a "MoveSession" packet and if so, reworks the packet back to a regular
+	 * DTLS application packet, after extracting the deviceID and then handles the packet.
+	 * @param {Uint8Array|Buffer} msg   The packet to check
+	 * @param {string} key              The key identifying the network source of the packet
+	 * @param {object} rinfo            The network source of the packet
+	 * @returns {boolean} true when the packet was handled and no further processing is necessary. false if the packet
+	 *  could not be handled.
+	 * @private
+	 */
+	_handleMoveSession(msg, key, rinfo) {
 		// special IP changed content type
+		let unpacked;
+		if ((unpacked=this._unpackMoveSessionPacket(msg))) {
+			const { msg, deviceId } = unpacked;
+			this._debug(`received ip change ip=${key}, deviceID=${deviceId}`);
+			if (this._handleIpChange(msg, key, rinfo, deviceId)) {
+				// no more processing needed
+				return true;
+			}
+		}
+		this._moveSessionCount = 0;
+		return false;
+	}
+
+	/**
+	 * Determines if a packet is a move session packet, and if it is, unpacks it.
+	 * @param {(Uint8Array|Buffer)} msg
+	 * @returns {{msg: (Uint8Array|Buffer), deviceId: string}} result The unpacked message and the deviceId
+	 * @private
+	 */
+	_unpackMoveSessionPacket(msg) {
 		if (msg.length > 0 && msg[0] === IP_CHANGE_CONTENT_TYPE) {
 			const idLen = msg[msg.length - 1];
 			const idStartIndex = msg.length - idLen - 1;
@@ -266,14 +330,27 @@ class DtlsServer extends EventEmitter {
 			// slice off id and length, return content type to ApplicationData
 			msg = msg.slice(0, idStartIndex);
 			msg[0] = APPLICATION_DATA_CONTENT_TYPE;
-
-			this._debug(`received ip change ip=${key}, deviceID=${deviceId}`);
-			if (this._handleIpChange(msg, key, rinfo, deviceId)) {
-				// _handleIpChange may recursively call _onMessage to handle this message, so we can drop out here.
-				return;
-			}
+			return { msg, deviceId };
 		}
+	}
 
+	/**
+	 * Callback to handle error and delivery of application data.
+	 * @callback DtlsServer~receiveCallback
+	 * @param {number} err  When defined, indicates the error that occurred trying to decode the packet
+	 * @param {bool} received   when set to true, application data was successfully decoded. Otherwise no data was decoded.
+	 */
+
+	/**
+	 * Handled a dtls message.
+	 * @param {(Buffer|Uint8Array)} msg   The packet to decode
+	 * @param {String} key      The key of the client that sent the packet
+	 * @param {Object} rinfo    The source of the packet
+	 * @param {DtlsServer~receiveCallback} [cb]
+	 *
+	 * @private
+	 */
+	_receiveMessage(msg, key, rinfo, cb) {
 		let client = this.sockets[key];
 		if (!client) {
 			// a device is sending data to this instance but we don't yet have a dtls socket for it
@@ -291,7 +368,7 @@ class DtlsServer extends EventEmitter {
 
 		if (cb) {
 			// we cork because we want the callback to happen
-			// before the implications of the message do
+			// before the implications of the message data being delivered to clients
 			client.cork();
 			const received = client.receive(msg);
 			cb(client, received);

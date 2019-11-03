@@ -16,6 +16,7 @@ const MBEDTLS_ERR_SSL_CLIENT_RECONNECT = -0x6780;
  * Emits:
  *       "send", message.length: the length of the encrypted message sent
  *       "secureConnect": secure connection has been established (handshake complete)
+ *       "sessionResumed": when a client indicates it has reconnected (via a movesession packet.)
  *       "error": only if a callback wasn't passed to write() (contrary to the node docs.) After the error event is emitted
  *          the socket is torn down.
  *       "closing": emitted when the connection is being torn down.
