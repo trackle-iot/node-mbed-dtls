@@ -78,7 +78,7 @@ class DtlsServer extends EventEmitter {
 	 * Begin listening on the specified port and interface.
 	 * @param {Number} port
 	 * @param {String} hostname
-	 * @param {function) callback
+	 * @param callback
 	 */
 	listen(port, hostname, callback) {
 		this.dgramSocket.bind(port, hostname, callback);
@@ -114,7 +114,7 @@ class DtlsServer extends EventEmitter {
 	 * @returns {boolean} false if there was already an existing client matching the same source
 	 */
 	resumeSocket(rinfo, session) {
-		const key = `${rinfo.address}:${rinfo.port}`;
+		const key = this._makeKey(rinfo);
 		let client = this.sockets[key];
 		if (client) {
 			return false;
@@ -135,6 +135,10 @@ class DtlsServer extends EventEmitter {
 		if (this.options.debug) {
 			console.log(...arguments);
 		}
+	}
+
+	_makeKey(rinfo) {
+		return `${rinfo.address}:${rinfo.port}`;
 	}
 
 	_handleIpChange(msg, key, rinfo, deviceId) {
@@ -251,7 +255,7 @@ class DtlsServer extends EventEmitter {
 	 * @private
 	 */
 	_onMessage(msg, rinfo, cb) {
-		const key = `${rinfo.address}:${rinfo.port}`;
+		const key = this._makeKey(rinfo);
 
 		// special IP changed content type
 		if (msg.length > 0 && msg[0] === IP_CHANGE_CONTENT_TYPE) {
