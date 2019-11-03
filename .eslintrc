@@ -23,7 +23,6 @@
     "no-nested-ternary": 2,
     "quotes": [2, "single", "avoid-escape"],
     "semi": [2, "always"],
-    "space-after-keywords": [2, "always"],
     "space-unary-ops": [2, {"words": true, "nonwords": false}],
     "strict": [2, "global"],
     "valid-jsdoc": 2,
