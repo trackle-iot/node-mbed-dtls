@@ -103,24 +103,6 @@ class DtlsServer extends EventEmitter {
 		this._moveSessionMessages.set(key, []);
 		const lookedUp = this.emit('lookupKey', deviceId, (err, oldRinfo) => {
 			if (!err && oldRinfo) {
-				if (rinfo.address === oldRinfo.address && rinfo.port === oldRinfo.port) {
-					// The IP and port have not changed.
-					// The device just thought they might have.
-					// the extra DTLS option has been stripped already, handle the message as normal
-					// like normal using the client we already had.
-					this._debug(`handleIpChange: ignoring ip change because address did not change ip=${key}, deviceID=${deviceId}`);
-					this._onMessage(msg, rinfo, (client, received) => {
-						// 'received' is true or false based on whether the message is pushed into the stream
-						if (received) {
-							this._processMoveSessionMessages(key);
-						} else {
-							this._clearMoveSessionMessages(key);
-							this.emit('forceDeviceRehandshake', rinfo, deviceId);
-						}
-					});
-
-					return;
-				}
 				// The IP and/or port have changed
 				// Attempt to send to oldRinfo which will
 				// a) attempt session resumption (if the client with old address and port doesnt exist yet)
@@ -130,12 +112,13 @@ class DtlsServer extends EventEmitter {
 					// if the message went through OK
 					if (received) {
 						this._debug(`handleIpChange: message successfully received, changing ip address fromip=${oldKey}, toip=${key}, deviceID=${deviceId}`);
-						// change IP
-						client.remoteAddress = rinfo.address;
-						client.remotePort = rinfo.port;
-						// move in lookup table
-						this.sockets[key] = client;
-						delete this.sockets[oldKey];
+						// move in lookup table only if the IP has actually changed
+						if (key != oldKey) {
+							client.remoteAddress = rinfo.address;
+							client.remotePort = rinfo.port;
+							this.sockets[key] = client;
+							delete this.sockets[oldKey];
+						}
 						// update cached session
 						let updatePending = false;
 						client.emit('ipChanged', oldRinfo, () => {
