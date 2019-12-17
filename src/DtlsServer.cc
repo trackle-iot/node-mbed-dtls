@@ -8,7 +8,7 @@
 void throwMbedTlsError(Napi::Env& env, int error) {
 	char buf[256] = {};
 	mbedtls_strerror(error, buf, sizeof(buf));
-	throw Napi::Error::New(env, buf);
+	Napi::Error::New(env, buf).ThrowAsJavaScriptException();
 }
 
 static void my_debug( void *ctx, int level,

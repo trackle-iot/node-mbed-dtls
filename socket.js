@@ -138,16 +138,18 @@ class DtlsSocket extends stream.Duplex {
 	}
 
 	_renegotiateCallback(err, data) {
+		let s;
+
+		if (!err && data) {
+			s = new mbed.SessionWrap();
+			err = s.restore(data);
+		}
+
 		if (err) {
 			this._end();
 			return;
 		}
 
-		let s;
-		if (data) {
-			s = new mbed.SessionWrap();
-			s.restore(data);
-		}
 		this.mbedSocket.renegotiate(s || undefined);
 		this.resumed = true;
 	}

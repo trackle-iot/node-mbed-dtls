@@ -16,12 +16,13 @@
 #include "mbedtls/ssl_cache.h"
 #endif
 
-#define CHECK_MBEDTLS(_expr) \
-	do { \
-		const int _r = _expr; \
-		if (_r != 0) { \
-			throwMbedTlsError(env, _r); \
-		} \
+#define CHECK_MBEDTLS(_expr)				\
+	do {															\
+		const int _r = _expr;						\
+		if (_r != 0) {									\
+			throwMbedTlsError(env, _r);		\
+			return;												\
+		}																\
 	} while (false)
 
 void throwMbedTlsError(Napi::Env& env, int error);
