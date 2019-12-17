@@ -94,7 +94,7 @@ void SessionWrap::SetCiphersuite(const Napi::CallbackInfo& info, const Napi::Val
 Napi::Value SessionWrap::GetRandomBytes(const Napi::CallbackInfo& info) {
 	Napi::Env env = info.Env();
 	SessionWrap *session = Napi::ObjectWrap<SessionWrap>::Unwrap(info.This().As<Napi::Object>());
-	return Napi::Buffer<char>::Copy(env, (char *)session->randbytes, 64);
+	return Napi::Buffer<char>::Copy(env, (char *)session->randbytes, RANDBYTES_LENGTH);
 }
 
 void SessionWrap::SetRandomBytes(const Napi::CallbackInfo& info, const Napi::Value& value) {
@@ -123,7 +123,7 @@ void SessionWrap::SetId(const Napi::CallbackInfo& info, const Napi::Value& value
 Napi::Value SessionWrap::GetMaster(const Napi::CallbackInfo& info) {
 	Napi::Env env = info.Env();
 	SessionWrap *session = Napi::ObjectWrap<SessionWrap>::Unwrap(info.This().As<Napi::Object>());
-	return Napi::Buffer<char>::Copy(env, (char *)session->master, 48);
+	return Napi::Buffer<char>::Copy(env, (char *)session->master, MASTER_LENGTH);
 }
 
 void SessionWrap::SetMaster(const Napi::CallbackInfo& info, const Napi::Value& value) {
@@ -149,7 +149,7 @@ void SessionWrap::SetInEpoch(const Napi::CallbackInfo& info, const Napi::Value& 
 Napi::Value SessionWrap::GetOutCounter(const Napi::CallbackInfo& info) {
 	Napi::Env env = info.Env();
 	SessionWrap *session = Napi::ObjectWrap<SessionWrap>::Unwrap(info.This().As<Napi::Object>());
-	return Napi::Buffer<char>::Copy(env, (char *)session->out_ctr, 8);
+	return Napi::Buffer<char>::Copy(env, (char *)session->out_ctr, OUT_CR_LENGTH);
 }
 
 void SessionWrap::SetOutCounter(const Napi::CallbackInfo& info, const Napi::Value& value) {
