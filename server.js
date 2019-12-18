@@ -92,6 +92,10 @@ class DtlsServer extends EventEmitter {
 		}
 	}
 
+	_makeKey(rinfo) {
+		return rinfo ? `${rinfo.address}:${rinfo.port}` : '';
+	}
+
 	_handleIpChange(msg, key, rinfo, deviceId) {
 		// Check if another MoveSession packet from the same device is being processed already
 		const messages = this._moveSessionMessages.get(key);
@@ -103,7 +107,9 @@ class DtlsServer extends EventEmitter {
 		this._moveSessionMessages.set(key, []);
 		const lookedUp = this.emit('lookupKey', deviceId, (err, oldRinfo) => {
 			if (!err && oldRinfo) {
-				if (rinfo.address === oldRinfo.address && rinfo.port === oldRinfo.port) {
+				const oldKey = `${oldRinfo.address}:${oldRinfo.port}`;
+
+				if (false && rinfo.address === oldRinfo.address && rinfo.port === oldRinfo.port) {
 					// The IP and port have not changed.
 					// The device just thought they might have.
 					// the extra DTLS option has been stripped already, handle the message as normal
@@ -121,6 +127,7 @@ class DtlsServer extends EventEmitter {
 
 					return;
 				}
+
 				// The IP and/or port have changed
 				// Attempt to send to oldRinfo which will
 				// a) attempt session resumption (if the client with old address and port doesnt exist yet)
@@ -130,32 +137,43 @@ class DtlsServer extends EventEmitter {
 					// if the message went through OK
 					if (received) {
 						this._debug(`handleIpChange: message successfully received, changing ip address fromip=${oldKey}, toip=${key}, deviceID=${deviceId}`);
+
 						// change IP
-						client.remoteAddress = rinfo.address;
-						client.remotePort = rinfo.port;
-						// move in lookup table
-						this.sockets[key] = client;
-						delete this.sockets[oldKey];
-						// update cached session
-						let updatePending = false;
-						client.emit('ipChanged', oldRinfo, () => {
-							updatePending = true;
-						}, err => {
-							// Keep queueing messages until the cached session data is updated
-							if (!err) {
+						if (oldKey!==key) {
+							client.remoteAddress = rinfo.address;
+							client.remotePort = rinfo.port;
+							// move in lookup table
+							this.sockets[key] = client;
+							delete this.sockets[oldKey];
+						}
+						// do we need to send the ipChanged event? Only send one for a run of move session packets
+						// to the same IP/port
+						if (this._makeKey(client.ipChangedPrevious)!==key) {
+							client.ipChangedPrevious = rinfo;
+							// update cached session
+							let updatePending = false;
+							client.emit('ipChanged', oldRinfo, () => {
+								updatePending = true;
+							}, err => {
+								// Keep queueing messages until the cached session data is updated
+								if (!err) {
+									this._processMoveSessionMessages(key);
+								} else {
+									this._clearMoveSessionMessages(key);
+								}
+							});
+
+							if (!updatePending) {
+								// FIXME: The client socket may not have a handler registered for its 'ipChanged' events, see this thread
+								// for details:
+								// https://s.slack.com/archives/CKRRAGTSB/p1576283554014400?thread_ts=1575905941.123800&cid=CKRRAGTSB
+								//
+								// Technically, the session has been moved successfully though, so we can now process queued messages
+								// which were received from the new device address
+								this._debug(`ipChanged not handled, ip=${key}`);
 								this._processMoveSessionMessages(key);
-							} else {
-								this._clearMoveSessionMessages(key);
 							}
-						});
-						if (!updatePending) {
-							// FIXME: The client socket may not have a handler registered for its 'ipChanged' events, see this thread
-							// for details:
-							// https://s.slack.com/archives/CKRRAGTSB/p1576283554014400?thread_ts=1575905941.123800&cid=CKRRAGTSB
-							//
-							// Technically, the session has been moved successfully though, so we can now process queued messages
-							// which were received from the new device address
-							this._debug(`ipChanged not handled, ip=${key}`);
+						} else {
 							this._processMoveSessionMessages(key);
 						}
 					} else {
@@ -303,6 +321,9 @@ class DtlsServer extends EventEmitter {
 			cb(client, received);
 			client.uncork();
 		} else {
+			// no cb is when it's a regular application message from the network
+			// with cb is a decoded movesession message
+			client.ipChangedPrevious = undefined;
 			client.receive(msg);
 		}
 	}
