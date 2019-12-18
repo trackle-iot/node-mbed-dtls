@@ -101,7 +101,7 @@ class DtlsServer extends EventEmitter {
 		const messages = this._moveSessionMessages.get(key);
 		if (messages) {
 			this._debug(`Enqueuing MoveSession message, ip=${key}`);
-			messages.push({ msg, rinfo });
+			//messages.push({ msg, rinfo });
 			return true;
 		}
 		this._moveSessionMessages.set(key, []);
@@ -140,6 +140,7 @@ class DtlsServer extends EventEmitter {
 
 						// change IP
 						if (oldKey!==key) {
+							client.key = key;
 							client.remoteAddress = rinfo.address;
 							client.remotePort = rinfo.port;
 							// move in lookup table
@@ -332,19 +333,28 @@ class DtlsServer extends EventEmitter {
 		var client = new DtlsSocket(this, rinfo.address, rinfo.port);
 		client.sendClose = this.options.sendClose;
 		client.selfRestored = selfRestored;
-		this._attachToSocket(client, key);
+		this._attachToSocket(client);
 		return client;
 	}
 
-	_attachToSocket(client, key) {
-		client.once('error', (code, err) => {
+	_deleteClient(client) {
+		const key = client.key;
+		if (this.sockets[key]===client) {
 			delete this.sockets[key];
+		} else {
+			this._debug(`not deleting socket on key ${key} because it has chagned`);
+		}
+	}
+
+	_attachToSocket(client) {
+		client.once('error', (code, err) => {
+			this._deleteClient(client);
 			if (!client.connected) {
 				this.emit('clientError', err, client);
 			}
 		});
 		client.once('close', () => {
-			delete this.sockets[key];
+			this._deleteClient(client);
 			client = null;
 			if (this._closing && Object.keys(this.sockets).length === 0) {
 				this._closeSocket();
@@ -353,8 +363,8 @@ class DtlsServer extends EventEmitter {
 		client.once('reconnect', socket => {
 			// treat like a brand new connection
 			socket.reset();
-			this._attachToSocket(socket, key);
-			this.sockets[key] = socket;
+			this._attachToSocket(socket, client.key);
+			this.sockets[client.key] = socket;
 		});
 
 		client.once('secureConnect', () => {
