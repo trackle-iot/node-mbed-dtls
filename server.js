@@ -146,6 +146,7 @@ class DtlsServer extends EventEmitter {
 								this._processMoveSessionMessages(key);
 							} else {
 								this._clearMoveSessionMessages(key);
+								this.emit('forceDeviceRehandshake', rinfo, deviceId);
 							}
 						});
 						if (!updatePending) {
