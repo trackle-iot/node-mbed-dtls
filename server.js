@@ -156,7 +156,8 @@ class DtlsServer extends EventEmitter {
 							// Technically, the session has been moved successfully though, so we can now process queued messages
 							// which were received from the new device address
 							this._debug(`ipChanged not handled, ip=${key}`);
-							this._processMoveSessionMessages(key);
+							this._clearMoveSessionMessages(key);
+							this.emit('forceDeviceRehandshake', rinfo, deviceId);
 						}
 					} else {
 						this._debug(`handleIpChange: message not successfully received, NOT changing ip address fromip=${oldKey}, toip=${key}, deviceID=${deviceId}`);
