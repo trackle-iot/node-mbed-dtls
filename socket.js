@@ -18,11 +18,17 @@ class DtlsSocket extends stream.Duplex {
 		this._sendClose = true;
 		const key = `${address}:${port}`;
 
-		this.mbedSocket = new mbed.DtlsSocket(server.mbedServer, key,
-			this._sendEncrypted.bind(this),
-			this._handshakeComplete.bind(this),
-			this._error.bind(this),
-			this._renegotiate.bind(this));
+		try {
+			this.mbedSocket = new mbed.DtlsSocket(server.mbedServer, key,
+				this._sendEncrypted.bind(this),
+				this._handshakeComplete.bind(this),
+				this._error.bind(this),
+				this._renegotiate.bind(this));
+		} catch (error) {
+			// Don't _error() here because that method assumues we've had
+			// an active socket at some point which is not the case here.
+			this.emit('error', 0, error.message);
+		}
 	}
 
 	get publicKey() {
