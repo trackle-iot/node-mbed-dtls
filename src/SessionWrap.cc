@@ -49,14 +49,14 @@ Napi::Value SessionWrap::Restore(const Napi::CallbackInfo& info) {
 	Napi::Object rbv = object.Get("randbytes").ToObject();
 	size_t rbv_length = rbv.As<Napi::Buffer<char>>().Length();
 	if (rbv_length > RANDBYTES_LENGTH) {
-		throw Napi::RangeError::New(env, "random bytes value length greater than allowed");
+		return Napi::String::New(env, "SessionWrap::Restore: random bytes value length greater than allowed");
 	}
 	memcpy(session->randbytes, (rbv).As<Napi::Buffer<char>>().Data(), rbv_length);
 
 	Napi::Object idv = object.Get("id").ToObject();
 	size_t idv_length = idv.As<Napi::Buffer<char>>().Length();
 	if (idv_length > ID_LENGTH) {
-		throw Napi::RangeError::New(env, "id value length greater than allowed");
+		return Napi::String::New(env, "SessionWrap::Restore: id value length greater than allowed");
 	}
 	memcpy(session->id, idv.As<Napi::Buffer<char>>().Data(), idv_length);
 	session->id_len = idv_length;
@@ -64,7 +64,7 @@ Napi::Value SessionWrap::Restore(const Napi::CallbackInfo& info) {
 	Napi::Object masterv = object.Get("master").ToObject();
 	size_t masterv_length = masterv.As<Napi::Buffer<char>>().Length();
 	if (masterv_length > MASTER_LENGTH) {
-		throw Napi::RangeError::New(env, "master value length greater than allowed");
+		return Napi::String::New(env, "SessionWrap::Restore: master value length greater than allowed");
 	}
 	memcpy(session->master, masterv.As<Napi::Buffer<char>>().Data(), masterv_length);
 	session->in_epoch = object.Get("in_epoch").As<Napi::Number>().Uint32Value();
@@ -72,11 +72,11 @@ Napi::Value SessionWrap::Restore(const Napi::CallbackInfo& info) {
 	Napi::Object out_ctrv = object.Get("out_ctr").ToObject();
 	size_t out_ctrv_length = out_ctrv.As<Napi::Buffer<char>>().Length();
 	if (out_ctrv_length > OUT_CR_LENGTH) {
-		throw Napi::RangeError::New(env, "out_ctr value length greater than allowed");
+		return Napi::String::New(env, "SessionWrap::Restore: out_ctr value length greater than allowed");
 	}
 	memcpy(session->out_ctr, out_ctrv.As<Napi::Buffer<char>>().Data(), out_ctrv_length);
 
-	return Napi::Boolean::New(env, true);
+	return env.Undefined();
 }
 
 Napi::Value SessionWrap::GetCiphersuite(const Napi::CallbackInfo& info) {

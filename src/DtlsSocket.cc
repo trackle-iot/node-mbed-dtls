@@ -400,7 +400,7 @@ int DtlsSocket::step() {
 void DtlsSocket::throwError(int ret) {
 	char error_buf[255];
 	mbedtls_strerror(ret, error_buf, 254);
-	throw Napi::Error::New(env, error_buf);
+	Napi::Error::New(env, error_buf).ThrowAsJavaScriptException();
 }
 
 void DtlsSocket::error(int ret) {
