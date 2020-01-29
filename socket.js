@@ -169,7 +169,17 @@ class DtlsSocket extends stream.Duplex {
 		}
 
 		this.emit('receive', (msg && msg.length) || 0);
-		const data = this.mbedSocket.receiveData(msg);
+		let data;
+
+		try {
+			// We keep getting an 'unknown error' thrown from this call
+			// but we cannot figure out where in the native code it is
+			// coming from.
+			data = this.mbedSocket.receiveData(msg);
+		} catch (error) {
+			this.server.emit('clientError', error, this);
+		}
+
 		if (data) {
 			this.push(data);
 			return true;
