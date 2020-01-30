@@ -177,7 +177,11 @@ class DtlsSocket extends stream.Duplex {
 			// coming from.
 			data = this.mbedSocket.receiveData(msg);
 		} catch (error) {
-			this.server.emit('clientError', error, this);
+			// based on DTLS debug logs, this error is what mbed-tls should be giving us
+			// @TODO find a way to get this message from mbed-tls
+			this.server.emit('clientError', 'SSL - Verification of the message MAC failed', this);
+			this._hadError = true;
+			this._end();
 		}
 
 		if (data) {
