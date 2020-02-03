@@ -180,8 +180,10 @@ class DtlsSocket extends stream.Duplex {
 			// based on DTLS debug logs, this error is what mbed-tls should be giving us
 			// @TODO find a way to get this message from mbed-tls
 			this.server.emit('clientError', 'SSL - Verification of the message MAC failed', this);
-			this._hadError = true;
-			this._end();
+			//Removing this to as it stopped devices being able to connect for some reason, will investigate shortly
+			//this._hadError = true;
+			//this._end();
+			//return false;
 		}
 
 		if (data) {
