@@ -208,6 +208,7 @@ bool DtlsSocket::resume(SessionWrap *sess) {
 	ssl_context.in_epoch = sess->in_epoch;
 
 	memcpy(ssl_context.out_ctr, sess->out_ctr, 8);
+	memcpy(random, sess->randbytes, 64);
 	memcpy(ssl_context.handshake->randbytes, sess->randbytes, 64);
 	memcpy(ssl_context.session_negotiate->master, sess->master, 48);
 
