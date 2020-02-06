@@ -113,39 +113,33 @@ class DtlsServer extends EventEmitter {
 				// Attempt to send to oldRinfo which will
 				// a) attempt session resumption (if the client with old address and port doesnt exist yet)
 				// b) attempt to send the message to the old old address and port
-				this._onMessage(msg, oldRinfo, (client, received) => {
-					const oldKey = `${oldRinfo.address}:${oldRinfo.port}`;
-					// if the message went through OK
-					if (received) {
-						this._debug(`handleIpChange: message successfully received, changing ip address fromip=${oldKey}, toip=${key}, deviceID=${deviceId}`);
-						// change IP
-						client.remoteAddress = rinfo.address;
-						client.remotePort = rinfo.port;
-						// move in lookup table
-						this.sockets[key] = client;
-						delete this.sockets[oldKey];
-						// update cached session
-						let updatePending = false;
-						client.emit('ipChanged', oldRinfo, () => {
-							updatePending = true;
-						}, err => {
-							if (err) {
-								this.emit('forceDeviceRehandshake', rinfo, deviceId);
-							}
-						});
-						if (!updatePending) {
-							// FIXME: The client socket may not have a handler registered for its 'ipChanged' events, see this thread
-							// for details:
-							// https://s.slack.com/archives/CKRRAGTSB/p1576283554014400?thread_ts=1575905941.123800&cid=CKRRAGTSB
-							// the force handshake was added for pre 1.2.1 sleepy devices
-							this._debug(`ipChanged not handled, ip=${key}`);
+				this._onMessage(msg, oldRinfo, (client, received) =>
+					new Promise((resolve, reject) => {
+						const oldKey = `${oldRinfo.address}:${oldRinfo.port}`;
+						// if the message went through OK
+						if (received) {
+							this._debug(`handleIpChange: message successfully received, changing ip address fromip=${oldKey}, toip=${key}, deviceID=${deviceId}`);
+							// change IP
+							client.remoteAddress = rinfo.address;
+							client.remotePort = rinfo.port;
+							// move in lookup table
+							this.sockets[key] = client;
+							delete this.sockets[oldKey];
+							client.emit('ipChanged', oldRinfo, () => {
+								resolve(true);
+							}, err => {
+								if (err) {
+									this.emit('forceDeviceRehandshake', rinfo, deviceId);
+									reject(err);
+								}
+								reject();
+							});
+						} else {
+							this._debug(`handleIpChange: message not successfully received, NOT changing ip address fromip=${oldKey}, toip=${key}, deviceID=${deviceId}`);
 							this.emit('forceDeviceRehandshake', rinfo, deviceId);
-						}
-					} else {
-						this._debug(`handleIpChange: message not successfully received, NOT changing ip address fromip=${oldKey}, toip=${key}, deviceID=${deviceId}`);
-						this.emit('forceDeviceRehandshake', rinfo, deviceId);
-					}
-				});
+						}}
+					)
+				);
 			} else {
 				// In May 2019 some devices were stuck with bad sessions, never handshaking.
 				// https://app.clubhouse.io/particle/milestone/32301/manage-next-steps-associated-with-device-connectivity-issues-starting-may-2nd-2019
@@ -160,7 +154,7 @@ class DtlsServer extends EventEmitter {
 	}
 
 	_forceDeviceRehandshake(rinfo, deviceId){
-		this._debug(`Attempting force re-handshake by sending malformed hello request packet to deviceID=${deviceId}`);
+		this._debug(`Attempting force re-handshake by sending malformed hello request packet to ${rinfo.port} ${rinfo.address}`);
 
 		// Construct the 'session killing' Avada Kedavra packet
 		const malformedHelloRequest = Buffer.from([
@@ -179,7 +173,7 @@ class DtlsServer extends EventEmitter {
 
 	_attemptResume(client, msg, key, cb) {
 		const lcb = cb || (() => {});
-		const called = this.emit('resumeSession', key, client, (err, session) => {
+		const called = this.emit('resumeSession', key, client, async (err, session) => {
 			if (!err && session) {
 				const resumed = client.resumeSession(session);
 				if (resumed) {
@@ -188,7 +182,9 @@ class DtlsServer extends EventEmitter {
 					const received = client.receive(msg);
 					// callback before secureConnection so
 					// IP can be changed
-					lcb(client, received);
+					if (cb) {
+						await lcb(client, received);
+					}
 					if (received) {
 						this.emit('secureConnection', client, session);
 					}
@@ -198,7 +194,11 @@ class DtlsServer extends EventEmitter {
 				}
 			}
 			client.receive(msg);
-			lcb(null, false);
+			if (cb) {
+				lcb(null, false);
+			} else {
+				this._forceDeviceRehandshake({ address: client.remoteAddress, port: client.remotePort });
+			}
 		});
 
 		// if somebody was listening, session will attempt to be resumed
