@@ -45,6 +45,10 @@ class DtlsServer extends EventEmitter {
 		if (options.handshakeTimeoutMin) {
 			this.mbedServer.handshakeTimeoutMin = options.handshakeTimeoutMin;
 		}
+
+		this.on('forceDeviceRehandshake', (rinfo, deviceId) => {
+			this._forceDeviceRehandshake(rinfo, deviceId);
+		})
 	}
 
 	listen(port, hostname, callback) {
@@ -124,7 +128,9 @@ class DtlsServer extends EventEmitter {
 							client.remotePort = rinfo.port;
 							// move in lookup table
 							this.sockets[key] = client;
-							delete this.sockets[oldKey];
+							if (this.sockets[oldKey]) {
+								delete this.sockets[oldKey];
+							}
 							client.emit('ipChanged', oldRinfo, () => {
 								resolve(true);
 							}, err => {
@@ -154,7 +160,7 @@ class DtlsServer extends EventEmitter {
 	}
 
 	_forceDeviceRehandshake(rinfo, deviceId){
-		this._debug(`Attempting force re-handshake by sending malformed hello request packet to ${rinfo.port} ${rinfo.address}`);
+		this._debug(`Attempting force re-handshake by sending malformed hello request packet to ${deviceId} socket ${rinfo.port} ${rinfo.address}`);
 
 		// Construct the 'session killing' Avada Kedavra packet
 		const malformedHelloRequest = Buffer.from([
@@ -178,12 +184,15 @@ class DtlsServer extends EventEmitter {
 				const resumed = client.resumeSession(session);
 				if (resumed) {
 					client.cork();
-
 					const received = client.receive(msg);
 					// callback before secureConnection so
 					// IP can be changed
 					if (cb) {
-						await lcb(client, received);
+						try {
+							await lcb(client, received);
+						} catch(err) {
+							this.emit('forceDeviceRehandshake', { address: client.remoteAddress, port: client.remotePort });
+						}
 					}
 					if (received) {
 						this.emit('secureConnection', client, session);
@@ -197,7 +206,8 @@ class DtlsServer extends EventEmitter {
 			if (cb) {
 				lcb(null, false);
 			} else {
-				this._forceDeviceRehandshake({ address: client.remoteAddress, port: client.remotePort });
+				// TODO check
+				// this.emit('forceDeviceRehandshake', { address: client.remoteAddress, port: client.remotePort });
 			}
 		});
 
