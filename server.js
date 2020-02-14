@@ -206,8 +206,7 @@ class DtlsServer extends EventEmitter {
 			if (cb) {
 				lcb(null, false);
 			} else {
-				// TODO check
-				// this.emit('forceDeviceRehandshake', { address: client.remoteAddress, port: client.remotePort });
+				this.emit('forceDeviceRehandshake', { address: client.remoteAddress, port: client.remotePort });
 			}
 		});
 
