@@ -9,6 +9,7 @@ var mbed = require('bindings')('node_mbed_dtls.node');
 
 const APPLICATION_DATA_CONTENT_TYPE = 23;
 const IP_CHANGE_CONTENT_TYPE = 254;
+const DUMB_PING_CONTENT_TYPE = 112;
 
 class DtlsServer extends EventEmitter {
 	constructor(options) {
@@ -217,6 +218,10 @@ class DtlsServer extends EventEmitter {
 
 	_onMessage(msg, rinfo, cb) {
 		const key = `${rinfo.address}:${rinfo.port}`;
+
+		if (msg.length === 1 && msg[0] === DUMB_PING_CONTENT_TYPE) {
+			this.dgramSocket.send(Buffer.from([0x70]), rinfo.port, rinfo.address);
+		}
 
 		// special IP changed content type
 		if (msg.length > 0 && msg[0] === IP_CHANGE_CONTENT_TYPE) {
