@@ -96,7 +96,7 @@ class DtlsSocket extends stream.Duplex {
 		};
 
 		// make absolutely sure the socket will let us send
-		if (!this.dgramSocket || !this.dgramSocket._handle) {
+		if (!this.dgramSocket) {
 			process.nextTick(() => {
 				sendFinished(new Error('no underlying socket'));
 			});
