@@ -46,6 +46,11 @@ class DtlsServer extends EventEmitter {
 		if (options.handshakeTimeoutMin) {
 			this.mbedServer.handshakeTimeoutMin = options.handshakeTimeoutMin;
 		}
+		let sendServerCertificate = 0; // default skip send certificate to client
+		if (options.sendServerCertificate) {
+			sendServerCertificate = 1;
+		}
+		this.mbedServer.sendServerCertificate = sendServerCertificate;
 
 		this.on('forceDeviceRehandshake', (rinfo, deviceId) => {
 			this._forceDeviceRehandshake(rinfo, deviceId);
@@ -265,7 +270,7 @@ class DtlsServer extends EventEmitter {
 	_createSocket(rinfo, key, selfRestored) {
 		var client = new DtlsSocket(this, rinfo.address, rinfo.port);
 		client.sendClose = this.options.sendClose;
-		client.selfRestored = selfRestored;
+		// client.selfRestored = selfRestored;
 		this._attachToSocket(client, key);
 		return client;
 	}

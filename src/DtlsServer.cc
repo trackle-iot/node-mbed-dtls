@@ -33,6 +33,7 @@ Napi::Object DtlsServer::Initialize(Napi::Env env, Napi::Object exports) {
 	Napi::Function func = DefineClass(env, "DtlsServer", {
 		InstanceAccessor("handshakeTimeoutMin", &DtlsServer::GetHandshakeTimeoutMin, &DtlsServer::SetHandshakeTimeoutMin),
 		InstanceAccessor("handshakeTimeoutMax", &DtlsServer::GetHandshakeTimeoutMax, &DtlsServer::SetHandshakeTimeoutMax),
+		InstanceAccessor("sendServerCertificate", nullptr, &DtlsServer::SetSendServerCertificate),
 	});
 
 	constructor = Napi::Persistent(func);
@@ -99,9 +100,6 @@ DtlsServer::DtlsServer(const Napi::CallbackInfo& info) : Napi::ObjectWrap<DtlsSe
 	static int ssl_cert_types[] = { MBEDTLS_TLS_CERT_TYPE_RAW_PUBLIC_KEY, MBEDTLS_TLS_CERT_TYPE_NONE };
 	mbedtls_ssl_conf_client_certificate_types(&conf, ssl_cert_types);
 	mbedtls_ssl_conf_server_certificate_types(&conf, ssl_cert_types);
-
-	// turn off server sending Certificate
-	mbedtls_ssl_conf_certificate_send(&conf, MBEDTLS_SSL_SEND_CERTIFICATE_DISABLED);
 }
 
 DtlsServer::~DtlsServer() {
@@ -135,3 +133,12 @@ void DtlsServer::SetHandshakeTimeoutMax(const Napi::CallbackInfo& info, const Na
 	uint32_t hs_timeout_max = value.As<Napi::Number>().Uint32Value();
 	mbedtls_ssl_conf_handshake_timeout(this->config(), this->config()->hs_timeout_min, hs_timeout_max);
 }
+
+void DtlsServer::SetSendServerCertificate(const Napi::CallbackInfo& info, const Napi::Value& value) {
+	uint32_t sendServerCertificate = value.As<Napi::Number>().Uint32Value();
+	if (sendServerCertificate == 0) {
+		// turn off server sending Certificate
+		mbedtls_ssl_conf_certificate_send(this->config(), MBEDTLS_SSL_SEND_CERTIFICATE_DISABLED);
+	}
+}
+
