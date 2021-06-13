@@ -34,7 +34,7 @@ Napi::Object SessionWrap::CreateFromContext(Napi::Env env, mbedtls_ssl_context *
 	news->id_len = ssl->session->id_len;
 	memcpy(news->master, ssl->session->master, MASTER_LENGTH);
 	news->in_epoch = ssl->in_epoch;
-	memcpy(news->out_ctr, ssl->out_ctr, OUT_CR_LENGTH);
+	memcpy(news->out_ctr, ssl->cur_out_ctr, OUT_CR_LENGTH);
 
 	return scope.Escape(instance).As<Napi::Object>();
 }

@@ -85,6 +85,10 @@
 #define MBEDTLS_SSL_CIPHERSUITES                        \
         MBEDTLS_TLS_ECDHE_ECDSA_WITH_AES_128_CCM_8
 
+#define MBEDTLS_ERROR_STRERROR_DUMMY
+#define MBEDTLS_SSL_KEEP_PEER_CERTIFICATE
+#define MBEDTLS_SSL_EXTENDED_MASTER_SECRET
+
 /*
  * Save RAM at the expense of interoperability: do this only if you control
  * both ends of the connection!  (See comments in "mbedtls/ssl.h".)

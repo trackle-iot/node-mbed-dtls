@@ -92,7 +92,7 @@ Napi::Value DtlsSocket::GetPublicKeyPEM(const Napi::CallbackInfo& info) {
 
 Napi::Value DtlsSocket::GetOutCounter(const Napi::CallbackInfo& info) {
 	Napi::Env env = info.Env();
-	return Napi::Buffer<unsigned char>::Copy(env, ssl_context.out_ctr, 8);
+	return Napi::Buffer<unsigned char>::Copy(env, ssl_context.cur_out_ctr, 8);
 }
 
 Napi::Value DtlsSocket::GetSession(const Napi::CallbackInfo& info) {
@@ -207,7 +207,7 @@ bool DtlsSocket::resume(SessionWrap *sess) {
 
 	ssl_context.in_epoch = sess->in_epoch;
 
-	memcpy(ssl_context.out_ctr, sess->out_ctr, 8);
+	memcpy(ssl_context.cur_out_ctr, sess->out_ctr, 8);
 	memcpy(random, sess->randbytes, 64);
 	memcpy(ssl_context.handshake->randbytes, sess->randbytes, 64);
 	memcpy(ssl_context.session_negotiate->master, sess->master, 48);
@@ -216,9 +216,8 @@ bool DtlsSocket::resume(SessionWrap *sess) {
 	memcpy(ssl_context.session_negotiate->id, sess->id, sess->id_len);
 
 	ssl_context.session_negotiate->ciphersuite = sess->ciphersuite;
-	ssl_context.transform_negotiate->ciphersuite_info = mbedtls_ssl_ciphersuite_from_id(sess->ciphersuite);
 
-	if (!ssl_context.transform_negotiate->ciphersuite_info)
+	if (!mbedtls_ssl_ciphersuite_from_id(sess->ciphersuite))
 	{
 		error(MBEDTLS_ERR_SSL_NO_USABLE_CIPHERSUITE);
 		return false;
