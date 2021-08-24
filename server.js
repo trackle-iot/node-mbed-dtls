@@ -224,12 +224,8 @@ class DtlsServer extends EventEmitter {
 		return called;
 	}
 
-	_onMessage(msg, rinfo, cb) {
+	_onMessage(msg, rinfo, cb) {		
 		const key = `${rinfo.address}:${rinfo.port}`;
-
-		if (msg.length === 1 && msg[0] === DUMB_PING_CONTENT_TYPE) {
-			this.dgramSocket.send(Buffer.from([0x70]), rinfo.port, rinfo.address);
-		}
 
 		// special IP changed content type
 		if (msg.length > 0 && msg[0] === IP_CHANGE_CONTENT_TYPE) {
@@ -256,6 +252,11 @@ class DtlsServer extends EventEmitter {
 					return;
 				}
 			}
+		}
+
+		if (msg.length === 1 && msg[0] === DUMB_PING_CONTENT_TYPE) {
+			client.emit("dumbPing");
+			return;
 		}
 
 		if (cb) {
