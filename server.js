@@ -193,7 +193,12 @@ class DtlsServer extends EventEmitter {
 				const resumed = client.resumeSession(session);
 				if (resumed) {
 					client.cork();
-					const received = client.receive(msg);
+					let received; 
+					if (msg.length === 1 && msg[0] === DUMB_PING_CONTENT_TYPE) {
+						received = true;
+					} else {
+						received = client.receive(msg);
+					}
 					// callback before secureConnection so
 					// IP can be changed
 					if (cb) {
@@ -224,7 +229,7 @@ class DtlsServer extends EventEmitter {
 		return called;
 	}
 
-	_onMessage(msg, rinfo, cb) {		
+	_onMessage(msg, rinfo, cb) {	
 		const key = `${rinfo.address}:${rinfo.port}`;
 
 		// special IP changed content type
@@ -247,7 +252,7 @@ class DtlsServer extends EventEmitter {
 		if (!client) {
 			this.sockets[key] = client = this._createSocket(rinfo, key);
 
-			if (msg.length > 0 && msg[0] === APPLICATION_DATA_CONTENT_TYPE) {
+			if ((msg.length > 0 && msg[0] === APPLICATION_DATA_CONTENT_TYPE) || (msg.length === 1 && msg[0] === DUMB_PING_CONTENT_TYPE)) {
 				if (this._attemptResume(client, msg, key, cb)) {
 					return;
 				}
