@@ -185,7 +185,10 @@ class DtlsSocket extends stream.Duplex {
 		}
 
 		if (data) {
-			this.push(data);
+			let dataLength = Buffer.alloc(2);
+			dataLength.writeInt16BE(data.length);
+			const chunk = Buffer.concat([dataLength, data]);
+			this.push(chunk);
 			return true;
 		}
 		return false;
