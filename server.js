@@ -217,6 +217,9 @@ class DtlsServer extends EventEmitter {
 				}
 			}
 			client.receive(msg);
+			// if (this.sockets[key]) {
+			// 	delete this.sockets[key];
+			// }
 			if (cb) {
 				lcb(null, false);
 			} else {
