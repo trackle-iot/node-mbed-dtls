@@ -217,9 +217,9 @@ class DtlsServer extends EventEmitter {
 				}
 			}
 			client.receive(msg);
-			// if (this.sockets[key]) {
-			// 	delete this.sockets[key];
-			// }
+			if (this.sockets[key]) {
+			 	delete this.sockets[key];
+			}
 			if (cb) {
 				lcb(null, false);
 			} else {
@@ -318,6 +318,7 @@ class DtlsServer extends EventEmitter {
 		if (this.dgramSocket) {
 			this.dgramSocket.removeListener('message', this._onMessage);
 		}
+		this.dgramSocket = null;
 		const sockets = Object.keys(this.sockets);
 		sockets.forEach(skey => {
 			const s = this.sockets[skey];
@@ -325,17 +326,12 @@ class DtlsServer extends EventEmitter {
 				s.end();
 			}
 		});
+		this.sockets = {};
 	}
 
 	_socketClosed() {
 		this.listening = false;
-		if (this.dgramSocket) {
-			this.dgramSocket.removeListener('message', this._onMessage);
-		}
-		this.dgramSocket = null;
 		this._endSockets();
-		this.sockets = {};
-
 		this.emit('close');
 		this.removeAllListeners();
 	}
