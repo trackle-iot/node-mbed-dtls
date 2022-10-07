@@ -240,11 +240,15 @@ class DtlsServer extends EventEmitter {
 			const idLen = msg[msg.length - 1];
 			const idStartIndex = msg.length - idLen - 1;
 			const deviceId = msg.slice(idStartIndex, idStartIndex + idLen).toString('hex').toLowerCase();
-
-			// slice off id and length, return content type to ApplicationData
-			msg = msg.slice(0, idStartIndex);
-			msg[0] = APPLICATION_DATA_CONTENT_TYPE;
-
+			// handle special case of ip change (with tinydtls trackle lib 2.0)
+			if (msg[1] === DUMB_PING_CONTENT_TYPE) {
+				// return content type to DumbPing
+				msg = [DUMB_PING_CONTENT_TYPE];
+			} else {
+				// slice off id and length, return content type to ApplicationData
+				msg = msg.slice(0, idStartIndex);
+				msg[0] = APPLICATION_DATA_CONTENT_TYPE;
+			}
 			this._debug(`received ip change ip=${key}, deviceID=${deviceId}`);
 			if (this._handleIpChange(msg, key, rinfo, deviceId)) {
 				return;
@@ -264,6 +268,9 @@ class DtlsServer extends EventEmitter {
 
 		if (msg.length === 1 && msg[0] === DUMB_PING_CONTENT_TYPE) {
 			client.emit("dumbPing");
+			if (cb) {
+				cb(client, true);
+			}
 			return;
 		}
 
