@@ -234,17 +234,20 @@ class DtlsServer extends EventEmitter {
 
 	_onMessage(msg, rinfo, cb) {	
 		const key = `${rinfo.address}:${rinfo.port}`;
-
+		this._debug(msg);
 		// special IP changed content type
 		if (msg.length > 0 && msg[0] === IP_CHANGE_CONTENT_TYPE) {
+			this._debug("IP_CHANGE_CONTENT_TYPE");
 			const idLen = msg[msg.length - 1];
 			const idStartIndex = msg.length - idLen - 1;
 			const deviceId = msg.slice(idStartIndex, idStartIndex + idLen).toString('hex').toLowerCase();
 			// handle special case of ip change (with tinydtls trackle lib 2.0)
 			if (msg[1] === DUMB_PING_CONTENT_TYPE) {
+				this._debug("type DUMB_PING_CONTENT_TYPE");
 				// return content type to DumbPing
 				msg = [DUMB_PING_CONTENT_TYPE];
 			} else {
+				this._debug("type APPLICATION_DATA_CONTENT_TYPE");
 				// slice off id and length, return content type to ApplicationData
 				msg = msg.slice(0, idStartIndex);
 				msg[0] = APPLICATION_DATA_CONTENT_TYPE;
