@@ -234,7 +234,7 @@ class DtlsServer extends EventEmitter {
 
 	_onMessage(msg, rinfo, cb) {	
 		const key = `${rinfo.address}:${rinfo.port}`;
-		this._debug(msg);
+		this._debug(key, msg);
 		// special IP changed content type
 		if (msg.length > 0 && msg[0] === IP_CHANGE_CONTENT_TYPE) {
 			this._debug("IP_CHANGE_CONTENT_TYPE");
