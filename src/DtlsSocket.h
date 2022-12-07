@@ -10,7 +10,7 @@
 #include "SessionWrap.h"
 
 #define KEY_BUF_LENGTH 1024
-#define RECV_BUF_LENGTH 1024
+#define RECV_BUF_LENGTH 1400
 
 class DtlsSocket : public Napi::ObjectWrap<DtlsSocket> {
 public:
