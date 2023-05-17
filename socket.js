@@ -4,6 +4,9 @@ const stream = require('stream');
 
 var mbed = require('bindings')('node_mbed_dtls.node');
 
+const HANDSHAKE_LOOP_INTERVAL = 500; // ms
+const HANDSHAKE_TIMEOUT_MAX = 60000; // ms
+
 const MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY = -0x7880;
 const MBEDTLS_ERR_SSL_CLIENT_RECONNECT = -0x6780;
 
@@ -17,6 +20,8 @@ class DtlsSocket extends stream.Duplex {
 		this._hadError = false;
 		this._sendClose = true;
 		const key = `${address}:${port}`;
+		this._handshakeLoop;
+		this._handshakeLoopTimeout = new Date().getTime();
 
 		try {
 			this.mbedSocket = new mbed.DtlsSocket(server.mbedServer, key,
@@ -24,10 +29,21 @@ class DtlsSocket extends stream.Duplex {
 				this._handshakeComplete.bind(this),
 				this._error.bind(this),
 				this._renegotiate.bind(this));
+
+			// handshake control loop: it calls the mbedtls receiveData like a loop in order to:
+			// 1) increase dtls timeout counters for packet retransmission
+			// 2) close socket after handshake max timeout if something goes wrong
+			this._handshakeLoop = setInterval(() => {
+				this.mbedSocket.receiveData("");
+				if (new Date().getTime() - this._handshakeLoopTimeout >= HANDSHAKE_TIMEOUT_MAX) {
+					this._end();
+				}
+			}, HANDSHAKE_LOOP_INTERVAL);
 		} catch (error) {
 			// Don't _error() here because that method assumues we've had
 			// an active socket at some point which is not the case here.
 			this.emit('error', 0, error.message);
+			clearInterval(this._handshakeLoop);
 		}
 	}
 
@@ -110,6 +126,7 @@ class DtlsSocket extends stream.Duplex {
 	_handshakeComplete() {
 		this.connected = true;
 		this.emit('secureConnect');
+		clearInterval(this._handshakeLoop);
 	}
 
 	_error(code, msg) {
@@ -222,6 +239,7 @@ class DtlsSocket extends stream.Duplex {
 		const noSend = !this._sendClose || this.mbedSocket.close();
 		this.emit('closing');
 		this.mbedSocket = null;
+		clearInterval(this._handshakeLoop);
 		if (noSend || !this._clientEnd) {
 			this._finishEnd();
 		}

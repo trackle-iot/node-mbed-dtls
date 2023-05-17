@@ -7,6 +7,7 @@ var EventEmitter = require('events').EventEmitter;
 var DtlsSocket = require('./socket');
 var mbed = require('bindings')('node_mbed_dtls.node');
 
+const ALERT_CONTENT_TYPE = 21;
 const APPLICATION_DATA_CONTENT_TYPE = 23;
 const IP_CHANGE_CONTENT_TYPE = 254;
 const DUMB_PING_CONTENT_TYPE = 112;
@@ -256,6 +257,10 @@ class DtlsServer extends EventEmitter {
 			if (this._handleIpChange(msg, key, rinfo, deviceId)) {
 				return;
 			}
+		}
+
+		if (msg.length > 0 && msg[0] === ALERT_CONTENT_TYPE) {
+			this._debug("ALERT_CONTENT_TYPE");
 		}
 
 		let client = this.sockets[key];
