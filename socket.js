@@ -43,7 +43,9 @@ class DtlsSocket extends stream.Duplex {
 			// Don't _error() here because that method assumues we've had
 			// an active socket at some point which is not the case here.
 			this.emit('error', 0, error.message);
-			clearInterval(this._handshakeLoop);
+			if(this._handshakeLoop) {
+				clearInterval(this._handshakeLoop);
+			}
 		}
 	}
 
@@ -79,6 +81,9 @@ class DtlsSocket extends stream.Duplex {
 		if (success) {
 			this.connected = true;
 			this.resumed = true;
+		}
+		if (this._handshakeLoop) {
+			clearInterval(this._handshakeLoop);
 		}
 		return success;
 	}
@@ -126,7 +131,9 @@ class DtlsSocket extends stream.Duplex {
 	_handshakeComplete() {
 		this.connected = true;
 		this.emit('secureConnect');
-		clearInterval(this._handshakeLoop);
+		if (this._handshakeLoop) {
+			clearInterval(this._handshakeLoop);
+		}
 	}
 
 	_error(code, msg) {
@@ -175,6 +182,9 @@ class DtlsSocket extends stream.Duplex {
 
 		this.mbedSocket.renegotiate(s || undefined);
 		this.resumed = true;
+		if (this._handshakeLoop) {
+			clearInterval(this._handshakeLoop);
+		}
 	}
 
 	receive(msg) {
@@ -226,6 +236,9 @@ class DtlsSocket extends stream.Duplex {
 		this._resetting = false;
 		this.resumed = false;
 		this.connected = false;
+		if (this._handshakeLoop) {
+			clearInterval(this._handshakeLoop);
+		}
 	}
 
 	_end() {
@@ -239,7 +252,9 @@ class DtlsSocket extends stream.Duplex {
 		const noSend = !this._sendClose || this.mbedSocket.close();
 		this.emit('closing');
 		this.mbedSocket = null;
-		clearInterval(this._handshakeLoop);
+		if (this._handshakeLoop) {
+			clearInterval(this._handshakeLoop);
+		}
 		if (noSend || !this._clientEnd) {
 			this._finishEnd();
 		}

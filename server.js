@@ -161,7 +161,7 @@ class DtlsServer extends EventEmitter {
 				// https://app.clubhouse.io/particle/milestone/32301/manage-next-steps-associated-with-device-connectivity-issues-starting-may-2nd-2019
 				// This cloud-side solution was discovered by Eli Thomas which caused
 				// mbedTLS to fail a socket read and initiate a handshake.
-				this._debug(`Device in 'move session' lock state attempting to force it to re-handshake deviceID=${deviceId}`);
+				this._debug(`Device in 'move session' lock state attempting to force it to re-handshake deviceID=${deviceId}`, key);
 				//Always EMIT this event instead of calling _forceDeviceRehandshake internally this allows the DS to device wether to send the packet or not to the device
 				this.emit('forceDeviceRehandshake', rinfo, deviceId);
 			}
@@ -219,6 +219,7 @@ class DtlsServer extends EventEmitter {
 			}
 			client.receive(msg);
 			if (this.sockets[key]) {
+				this.sockets[key].end();
 			 	delete this.sockets[key];
 			}
 			if (cb) {
@@ -259,18 +260,21 @@ class DtlsServer extends EventEmitter {
 			}
 		}
 
-		if (msg.length > 0 && msg[0] === ALERT_CONTENT_TYPE) {
-			this._debug("ALERT_CONTENT_TYPE");
-		}
-
 		let client = this.sockets[key];
 		if (!client) {
 			this.sockets[key] = client = this._createSocket(rinfo, key);
-
 			if ((msg.length > 0 && msg[0] === APPLICATION_DATA_CONTENT_TYPE) || (msg.length === 1 && msg[0] === DUMB_PING_CONTENT_TYPE)) {
 				if (this._attemptResume(client, msg, key, cb)) {
 					return;
 				}
+			}
+		}
+
+		if (msg.length > 0 && msg[0] === ALERT_CONTENT_TYPE) {
+			this._debug("ALERT_CONTENT_TYPE", key);
+			if(client) {
+				client.end();
+				delete this.sockets[key];
 			}
 		}
 
