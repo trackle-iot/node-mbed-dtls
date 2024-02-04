@@ -217,7 +217,9 @@ class DtlsServer extends EventEmitter {
 					return;
 				}
 			}
-			client.receive(msg);
+			// client.receive(msg); // removed because it generates
+			// clientError: SSL - Processing of the ClientHello handshake message failed 
+			// Socket error: -30976 sessionKey=127.0.0.1=61109
 			if (this.sockets[key]) {
 				this.sockets[key].end();
 			 	delete this.sockets[key];
