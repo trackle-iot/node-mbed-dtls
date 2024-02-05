@@ -91,7 +91,7 @@ class DtlsServer extends EventEmitter {
 			return false;
 		}
 
-		this.sockets[key] = client = this._createSocket(rinfo, key, true);
+		this.sockets[key] = client = this._createSocket(rinfo, true);
 		if (client.resumeSession(session)) {
 			this.emit('secureConnection', client, session);
 			return true;
@@ -264,7 +264,7 @@ class DtlsServer extends EventEmitter {
 
 		let client = this.sockets[key];
 		if (!client) {
-			this.sockets[key] = client = this._createSocket(rinfo, key);
+			this.sockets[key] = client = this._createSocket(rinfo);
 			if ((msg.length > 0 && msg[0] === APPLICATION_DATA_CONTENT_TYPE) || (msg.length === 1 && msg[0] === DUMB_PING_CONTENT_TYPE)) {
 				if (this._attemptResume(client, msg, key, cb)) {
 					return;
@@ -300,21 +300,23 @@ class DtlsServer extends EventEmitter {
 		}
 	}
 
-	_createSocket(rinfo, key, selfRestored) {
+	_createSocket(rinfo, selfRestored) {
 		var client = new DtlsSocket(this, rinfo.address, rinfo.port);
 		client.sendClose = this.options.sendClose;
-		this._attachToSocket(client, key);
+		this._attachToSocket(client);
 		return client;
 	}
 
-	_attachToSocket(client, key) {
+	_attachToSocket(client) {
 		client.once('error', (code, err) => {
+			const key = `${client.remoteAddress}:${client.remotePort}`
 			delete this.sockets[key];
 			if (!client.connected) {
 				this.emit('clientError', err, client);
 			}
 		});
 		client.once('close', () => {
+			const key = `${client.remoteAddress}:${client.remotePort}`
 			delete this.sockets[key];
 			client = null;
 			if (this._closing && Object.keys(this.sockets).length === 0) {
@@ -322,9 +324,10 @@ class DtlsServer extends EventEmitter {
 			}
 		});
 		client.once('reconnect', socket => {
+			const key = `${client.remoteAddress}:${client.remotePort}`
 			// treat like a brand new connection
 			socket.reset();
-			this._attachToSocket(socket, key);
+			this._attachToSocket(socket);
 			this.sockets[key] = socket;
 		});
 
