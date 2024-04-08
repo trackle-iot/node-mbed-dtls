@@ -1,6 +1,6 @@
 {
-  "name": "node-mbed-dtls",
-  "version": "3.3.0",
+  "name": "trackle-mbed-dtls",
+  "version": "3.3.2",
   "description": "Node mbed DTLS",
   "main": "index.js",
   "scripts": {
@@ -12,23 +12,15 @@
   },
   "author": "Bryce Kahle",
   "license": "Apache-2.0",
-  "gypfile": true,
   "dependencies": {
     "bindings": "^1.5.0",
     "chai": "^4.2.0",
     "node-addon-api": "^1.6.3"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/spark/node-mbed-dtls.git"
   },
   "devDependencies": {
     "mocha": "^2.3.3",
     "node-gyp": "^8.4.1",
     "should": "^7.1.0",
     "sinon": "^1.17.1"
-  },
-  "engines": {
-    "node": ">=5.0.0"
   }
 }

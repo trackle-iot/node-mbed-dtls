@@ -2,15 +2,6 @@
   "targets": [
     {
       "target_name": "mbedtls",
-      "cflags!": [ "-fno-exceptions" ],
-      "cflags_cc!": [ "-fno-exceptions" ],
-      "xcode_settings": { "GCC_ENABLE_CPP_EXCEPTIONS": "YES",
-        "CLANG_CXX_LIBRARY": "libc++",
-        "MACOSX_DEPLOYMENT_TARGET": "12.2",
-      },
-      "msvs_settings": {
-        "VCCLCompilerTool": { "ExceptionHandling": 1 },
-      },
       "type": "static_library",
       "sources": [
         "mbedtls/library/debug.c",
@@ -34,15 +25,6 @@
     },
     {
       "target_name": "mbedx509",
-      "cflags!": [ "-fno-exceptions" ],
-      "cflags_cc!": [ "-fno-exceptions" ],
-      "xcode_settings": { "GCC_ENABLE_CPP_EXCEPTIONS": "YES",
-        "CLANG_CXX_LIBRARY": "libc++",
-        "MACOSX_DEPLOYMENT_TARGET": "12.2",
-      },
-      "msvs_settings": {
-        "VCCLCompilerTool": { "ExceptionHandling": 1 },
-      },
       "type": "static_library",
       "sources": [
         "mbedtls/library/certs.c",
@@ -65,15 +47,6 @@
     },
     {
       "target_name": "mbedcrypto",
-      "cflags!": [ "-fno-exceptions" ],
-      "cflags_cc!": [ "-fno-exceptions" ],
-      "xcode_settings": { "GCC_ENABLE_CPP_EXCEPTIONS": "YES",
-        "CLANG_CXX_LIBRARY": "libc++",
-        "MACOSX_DEPLOYMENT_TARGET": "12.2",
-      },
-      "msvs_settings": {
-        "VCCLCompilerTool": { "ExceptionHandling": 1 },
-      },
       "type": "static_library",
       "sources": [
         "mbedtls/library/aes.c",
@@ -139,15 +112,6 @@
     },
     {
       "target_name": "node_mbed_dtls",
-      "cflags!": [ "-fno-exceptions" ],
-      "cflags_cc!": [ "-fno-exceptions" ],
-      "xcode_settings": { "GCC_ENABLE_CPP_EXCEPTIONS": "YES",
-        "CLANG_CXX_LIBRARY": "libc++",
-        "MACOSX_DEPLOYMENT_TARGET": "12.2",
-      },
-      "msvs_settings": {
-        "VCCLCompilerTool": { "ExceptionHandling": 1 },
-      },
       "sources": [
         "src/init.cc",
         "src/Constants.cc",
@@ -167,7 +131,8 @@
         "mbedcrypto"
       ],
       "defines": [
-        "MBEDTLS_CONFIG_FILE=\"config-ecc-ccm-rpk-dtls1_2.h\""
+        "MBEDTLS_CONFIG_FILE=\"config-ecc-ccm-rpk-dtls1_2.h\"",
+        "NAPI_DISABLE_CPP_EXCEPTIONS"
       ]
     }
   ]
