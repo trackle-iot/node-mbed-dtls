@@ -1,6 +1,6 @@
 {
   "name": "trackle-mbed-dtls",
-  "version": "3.3.2",
+  "version": "3.3.3",
   "description": "Node mbed DTLS",
   "main": "index.js",
   "scripts": {
