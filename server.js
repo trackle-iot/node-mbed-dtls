@@ -22,7 +22,7 @@ class DtlsServer extends EventEmitter {
 		this.dgramSocket = dgram.createSocket('udp4');
 		this._onMessage = this._onMessage.bind(this);
 		this.listening = false;
-
+		this.resumingSessions = {};
 		this.dgramSocket.on('message', this._onMessage);
 		this.dgramSocket.once('listening', () => {
 			this.listening = true;
@@ -153,8 +153,8 @@ class DtlsServer extends EventEmitter {
 						} else {
 							this._debug(`handleIpChange: message not successfully received, NOT changing ip address fromip=${oldKey}, toip=${key}, deviceID=${deviceId}`);
 							this.emit('forceDeviceRehandshake', rinfo, deviceId);
-						}}
-					)
+						}
+					})
 				);
 			} else {
 				// In May 2019 some devices were stuck with bad sessions, never handshaking.
@@ -169,7 +169,7 @@ class DtlsServer extends EventEmitter {
 		return lookedUp;
 	}
 
-	_forceDeviceRehandshake(rinfo, deviceId){
+	_forceDeviceRehandshake(rinfo, deviceId) {
 		this._debug(`Attempting force re-handshake by sending malformed hello request packet to ${deviceId} socket ${rinfo.port} ${rinfo.address}`);
 
 		// Construct the 'session killing' Avada Kedavra packet
@@ -188,13 +188,14 @@ class DtlsServer extends EventEmitter {
 	}
 
 	_attemptResume(client, msg, key, cb) {
-		const lcb = cb || (() => {});
+		this.resumingSessions[key] = true;
+		const lcb = cb || (() => { });
 		const called = this.emit('resumeSession', key, client, async (err, session) => {
 			if (!err && session) {
 				const resumed = client.resumeSession(session);
 				if (resumed) {
 					client.cork();
-					let received; 
+					let received;
 					if (msg.length === 1 && msg[0] === DUMB_PING_CONTENT_TYPE) {
 						received = true;
 					} else {
@@ -205,7 +206,7 @@ class DtlsServer extends EventEmitter {
 					if (cb) {
 						try {
 							await lcb(client, received);
-						} catch(err) {
+						} catch (err) {
 							this.emit('forceDeviceRehandshake', { address: client.remoteAddress, port: client.remotePort });
 						}
 					}
@@ -214,6 +215,7 @@ class DtlsServer extends EventEmitter {
 					}
 
 					client.uncork();
+					delete this.resumingSessions[key];
 					return;
 				}
 			}
@@ -221,14 +223,15 @@ class DtlsServer extends EventEmitter {
 			// clientError: SSL - Processing of the ClientHello handshake message failed 
 			// Socket error: -30976 sessionKey=127.0.0.1=61109
 			if (this.sockets[key]) {
-				this.sockets[key].end();
-			 	delete this.sockets[key];
+				client.end();
+				delete this.sockets[key];
 			}
 			if (cb) {
 				lcb(null, false);
 			} else {
 				this.emit('forceDeviceRehandshake', { address: client.remoteAddress, port: client.remotePort });
 			}
+			delete this.resumingSessions[key];
 		});
 
 		// if somebody was listening, session will attempt to be resumed
@@ -236,7 +239,7 @@ class DtlsServer extends EventEmitter {
 		return called;
 	}
 
-	_onMessage(msg, rinfo, cb) {	
+	_onMessage(msg, rinfo, cb) {
 		const key = `${rinfo.address}:${rinfo.port}`;
 		this._debug(key, msg);
 		// special IP changed content type
@@ -263,7 +266,7 @@ class DtlsServer extends EventEmitter {
 		}
 
 		let client = this.sockets[key];
-		if (!client) {
+		if (!client && this.resumingSessions[key] === undefined) {
 			this.sockets[key] = client = this._createSocket(rinfo);
 			if ((msg.length > 0 && msg[0] === APPLICATION_DATA_CONTENT_TYPE) || (msg.length === 1 && msg[0] === DUMB_PING_CONTENT_TYPE)) {
 				if (this._attemptResume(client, msg, key, cb)) {
@@ -272,9 +275,13 @@ class DtlsServer extends EventEmitter {
 			}
 		}
 
+		if (!client) {
+			return;
+		}
+
 		if (msg.length > 0 && msg[0] === ALERT_CONTENT_TYPE) {
 			this._debug("ALERT_CONTENT_TYPE", key);
-			if(client) {
+			if (client) {
 				client.end();
 				delete this.sockets[key];
 			}
@@ -309,8 +316,6 @@ class DtlsServer extends EventEmitter {
 
 	_attachToSocket(client) {
 		client.once('error', (code, err) => {
-			const key = `${client.remoteAddress}:${client.remotePort}`
-			delete this.sockets[key];
 			if (!client.connected) {
 				this.emit('clientError', err, client);
 			}
