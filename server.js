@@ -106,6 +106,7 @@ class DtlsServer extends EventEmitter {
 	}
 
 	_handleIpChange(msg, key, rinfo, deviceId) {
+		this.resumingSessions[key] = true;
 		const lookedUp = this.emit('lookupKey', deviceId, (err, oldRinfo) => {
 			if (!err && oldRinfo) {
 				if (rinfo.address === oldRinfo.address && rinfo.port === oldRinfo.port) {
@@ -114,13 +115,13 @@ class DtlsServer extends EventEmitter {
 					// the extra DTLS option has been stripped already, handle the message as normal
 					// like normal using the client we already had.
 					this._debug(`handleIpChange: ignoring ip change because address did not change ip=${key}, deviceID=${deviceId}`);
+					delete this.resumingSessions[key];
 					this._onMessage(msg, rinfo, (client, received) => {
 						// 'received' is true or false based on whether the message is pushed into the stream
 						if (!received) {
 							this.emit('forceDeviceRehandshake', rinfo, deviceId);
 						}
 					});
-
 					return;
 				}
 				// The IP and/or port have changed
@@ -141,18 +142,21 @@ class DtlsServer extends EventEmitter {
 							if (this.sockets[oldKey]) {
 								delete this.sockets[oldKey];
 							}
-							client.emit('ipChanged', oldRinfo, () => {
+							client.emit('ipChanged', oldRinfo, deviceId, () => {
+								delete this.resumingSessions[key];
 								resolve(true);
 							}, err => {
 								if (err) {
 									this.emit('forceDeviceRehandshake', rinfo, deviceId);
 									reject(err);
 								}
+								delete this.resumingSessions[key];
 								reject();
 							});
 						} else {
 							this._debug(`handleIpChange: message not successfully received, NOT changing ip address fromip=${oldKey}, toip=${key}, deviceID=${deviceId}`);
 							this.emit('forceDeviceRehandshake', rinfo, deviceId);
+							delete this.resumingSessions[key];
 						}
 					})
 				);
@@ -164,6 +168,7 @@ class DtlsServer extends EventEmitter {
 				this._debug(`Device in 'move session' lock state attempting to force it to re-handshake deviceID=${deviceId}`, key);
 				//Always EMIT this event instead of calling _forceDeviceRehandshake internally this allows the DS to device wether to send the packet or not to the device
 				this.emit('forceDeviceRehandshake', rinfo, deviceId);
+				delete this.resumingSessions[key];
 			}
 		});
 		return lookedUp;
@@ -242,6 +247,11 @@ class DtlsServer extends EventEmitter {
 	_onMessage(msg, rinfo, cb) {
 		const key = `${rinfo.address}:${rinfo.port}`;
 		this._debug(key, msg);
+
+		if (this.resumingSessions[key]) {
+			return;
+		}
+		
 		// special IP changed content type
 		if (msg.length > 0 && msg[0] === IP_CHANGE_CONTENT_TYPE) {
 			this._debug("IP_CHANGE_CONTENT_TYPE");
@@ -266,17 +276,13 @@ class DtlsServer extends EventEmitter {
 		}
 
 		let client = this.sockets[key];
-		if (!client && this.resumingSessions[key] === undefined) {
+		if (!client) {
 			this.sockets[key] = client = this._createSocket(rinfo);
 			if ((msg.length > 0 && msg[0] === APPLICATION_DATA_CONTENT_TYPE) || (msg.length === 1 && msg[0] === DUMB_PING_CONTENT_TYPE)) {
 				if (this._attemptResume(client, msg, key, cb)) {
 					return;
 				}
 			}
-		}
-
-		if (!client) {
-			return;
 		}
 
 		if (msg.length > 0 && msg[0] === ALERT_CONTENT_TYPE) {
