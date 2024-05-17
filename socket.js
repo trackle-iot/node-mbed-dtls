@@ -42,7 +42,7 @@ class DtlsSocket extends stream.Duplex {
 		} catch (error) {
 			// Don't _error() here because that method assumues we've had
 			// an active socket at some point which is not the case here.
-			this.emit('error', 0, error.message);
+			this.emit('error', error);
 			if(this._handshakeLoop) {
 				clearInterval(this._handshakeLoop);
 			}
@@ -155,7 +155,7 @@ class DtlsSocket extends stream.Duplex {
 			this._sendCallback(code);
 			this._sendCallback = null;
 		} else {
-			this.emit('error', code, msg);
+			this.emit('error', new Error(msg));
 		}
 		this._end();
 	}
@@ -206,7 +206,9 @@ class DtlsSocket extends stream.Duplex {
 		} catch (error) {
 			// based on DTLS debug logs, this error is what mbed-tls should be giving us
 			// @TODO find a way to get this message from mbed-tls
-			this.server.emit('clientError', 'SSL - Verification of the message MAC failed', this);
+			this.server.emit('clientError', new Error('mbed-dtls receive error'), this);
+			// uncomment to disconnect the device
+			// this.emit('error', new Error('mbed-tls receive error'));
 			this._hadError = true;
 			this._end();
 		}

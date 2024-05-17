@@ -321,7 +321,7 @@ class DtlsServer extends EventEmitter {
 	}
 
 	_attachToSocket(client) {
-		client.once('error', (code, err) => {
+		client.once('error', (err) => {
 			if (!client.connected) {
 				this.emit('clientError', err, client);
 			}
