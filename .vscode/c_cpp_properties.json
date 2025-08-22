@@ -1,0 +1,21 @@
+{
+  "configurations": [
+    {
+      "name": "MacOSX",
+      "includePath": [
+        "${workspaceFolder}/**",
+        "${workspaceFolder}/node_modules/node-addon-api",
+        "~/.nvm/versions/node/**"
+      ],
+      "macFrameworkPath": [
+        "/System/Library/Frameworks",
+        "/Library/Frameworks"
+      ],
+      "intelliSenseMode": "macos-clang-arm64",
+      "compilerPath": "/usr/bin/clang",
+      "cStandard": "c17",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}
